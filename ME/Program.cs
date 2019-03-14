@@ -12,7 +12,7 @@ namespace ME
         public static void Main(string[] args)
         {
 
-            using (WebApp.Start<Startup>("http://localhost:8080"))
+            using (WebApp.Start<Startup>("http://localhost:8088"))
             {
                 Console.WriteLine("Web Server is running.");
                 Console.WriteLine("Press any key to quit.");

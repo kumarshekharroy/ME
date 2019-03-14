@@ -11,7 +11,7 @@ namespace ME.Model
         public long UserID_Seller { get; set; }
         public long OrderID_Buy { get; set; }
         public long OrderID_Sell { get; set; }
-        public int Side { get; set; } 
+        public OrderSide Side { get; set; } 
         public decimal Volume { get; set; }
         public decimal Rate { get; set; }  
     }

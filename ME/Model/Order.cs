@@ -8,11 +8,13 @@ namespace ME.Model
     {
         public long ID { get; set; }
         public long UserID { get; set; }
-        public int Side { get; set; }
-        public int Type { get; set; }
+        public OrderSide Side { get; set; }
+        public OrderType Type { get; set; }
         public decimal Volume { get; set; }
         public decimal Rate { get; set; }
         public decimal PendingVolume { get; set; }
-        public int Status { get; set; }  
+        public DateTime AcceptedOn { get; set; }
+        public DateTime ModifiedOn { get; set; }
+        public OrderStatus Status { get; set; }
     }
 }
