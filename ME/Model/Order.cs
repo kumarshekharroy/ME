@@ -4,7 +4,7 @@ using System.Text;
 
 namespace ME.Model
 {
-    class Order
+   public class Order
     {
         public long ID { get; set; }
         public long UserID { get; set; }

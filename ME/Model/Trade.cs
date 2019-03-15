@@ -4,7 +4,7 @@ using System.Text;
 
 namespace ME.Model
 { 
-    class Trade
+  public  class Trade
     {
         public long ID { get; set; }
         public long UserID_Buyer { get; set; }

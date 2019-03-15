@@ -1,5 +1,6 @@
 ﻿using ME.Model;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,11 +15,13 @@ namespace ME
         public static MainService Instance { get { return lazy.Value; } }
         //private readonly LinkedList<Order> BuyOrders = new LinkedList<Order>();
         //private readonly LinkedList<Order> SellOrders = new LinkedList<Order>();
+        private readonly ConcurrentQueue<Order> PendingOrderQueue = new ConcurrentQueue<Order>();
         private readonly List<Order> BuyOrders = new List<Order>();
         private readonly List<Order> SellOrders = new List<Order>();
         private readonly List<Trade> Trades = new List<Trade>();
-        private readonly Queue<MatchResponse> Responses = new Queue<MatchResponse>();
-        long OrderID,TradeID;
+        private readonly Queue<MatchResponse> MatchResponses = new Queue<MatchResponse>();
+
+        long OrderID, TradeID;
         private MainService()
         {
             OrderID = 1000;
@@ -33,14 +36,81 @@ namespace ME
             return Interlocked.Increment(ref TradeID);
         }
 
+
+        //public proerties
+
+        public ConcurrentQueue<Order> AllPendingOrderQueue
+        {
+            get
+            {
+                return this.PendingOrderQueue;
+            }
+        }
+        public List<Order> AllSellOrders
+        {
+            get
+            {
+                return this.SellOrders;
+            }
+        }
+        public List<Order> AllBuyOrders
+        {
+            get
+            {
+                return this.BuyOrders;
+            }
+        }
+
+        public List<Trade> AllTrades
+        {
+            get
+            {
+                return this.Trades;
+            }
+        }
+
+        public Queue<MatchResponse> AllMatchResponses
+        {
+            get
+            {
+                return this.MatchResponses;
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
         //Self match allowed
-        public MatchResponse PlaceMyOrder(Order order)
+        public Order PlaceMyOrder(Order order)
         {
             order.ID = this.getOrderID();
             order.Status = OrderStatus.Accepted;
             order.AcceptedOn = DateTime.UtcNow;
+            order.PendingVolume = order.Volume;
+            PendingOrderQueue.Enqueue(order);
+            return order;
+        }
 
-            return MatchMyOrder(order);
+        public void MatchMyOrder_CornJob()
+        {
+            while (true)
+            {
+                if (!PendingOrderQueue.IsEmpty)
+                {
+                    Order order;
+                    if (PendingOrderQueue.TryDequeue(out order))
+                        MatchMyOrder(order);
+                }
+            }
+
         }
 
         //Self match allowed
@@ -48,13 +118,15 @@ namespace ME
         {
             var CurrentTime = DateTime.UtcNow;
             var response = new MatchResponse { UpdatedBuyOrders = new List<Order>(), UpdatedSellOrders = new List<Order>(), NewTrades = new List<Trade>() };
+           // bool isMatchFound = false;
             if (order.Side == OrderSide.Buy)
             {
+                response.UpdatedBuyOrders.Add(order);
                 var PossibleMatches = SellOrders.Where(x => x.Type == order.Type && x.Rate <= order.Rate && (x.Status == OrderStatus.Accepted || x.Status == OrderStatus.PartiallyFilled)).OrderBy(x => x.Rate).ThenBy(x => x.ID).ToList();
                 foreach (var sellOrder in PossibleMatches)
                 {
                     var trade = new Trade();
-                     
+
                     if (sellOrder.PendingVolume >= order.PendingVolume)//CompleteMatch
                     {
                         response.UpdatedBuyOrders.Add(order);
@@ -80,7 +152,7 @@ namespace ME
                         sellOrder.PendingVolume = 0;
                         sellOrder.Status = OrderStatus.FullyFilled;
                         sellOrder.ModifiedOn = CurrentTime;
-                        order.PendingVolume-= sellOrder.PendingVolume;
+                        order.PendingVolume -= sellOrder.PendingVolume;
                         order.Status = order.PendingVolume <= 0 ? OrderStatus.FullyFilled : OrderStatus.PartiallyFilled;
                         order.ModifiedOn = CurrentTime;
 
@@ -99,17 +171,18 @@ namespace ME
                     response.UpdatedSellOrders.Add(sellOrder);
                     response.NewTrades.Add(trade);
 
-                    BuyOrders.Add(order);
                     Trades.Add(trade);
-
+                   // isMatchFound = true;
                     if (order.Status == OrderStatus.FullyFilled)
                         break;
                 }
 
+                BuyOrders.Add(order);
             }
 
             if (order.Side == OrderSide.Sell)
             {
+                response.UpdatedSellOrders.Add(order);
                 var PossibleMatches = BuyOrders.Where(x => x.Type == order.Type && x.Rate >= order.Rate && (x.Status == OrderStatus.Accepted || x.Status == OrderStatus.PartiallyFilled)).OrderByDescending(x => x.Rate).ThenBy(x => x.ID).ToList();
                 foreach (var buyOrder in PossibleMatches)
                 {
@@ -127,7 +200,7 @@ namespace ME
                         order.ModifiedOn = CurrentTime;
 
                         trade.ID = this.getTradeID();
-                        trade.OrderID_Buy =buyOrder.ID ;
+                        trade.OrderID_Buy = buyOrder.ID;
                         trade.OrderID_Sell = order.ID;
                         trade.Side = order.Side;
                         trade.Rate = buyOrder.Rate;
@@ -159,15 +232,15 @@ namespace ME
                     response.UpdatedSellOrders.Add(order);
                     response.NewTrades.Add(trade);
 
-                    SellOrders.Add(order);
-                    Trades.Add(trade);
-
+                    Trades.Add(trade); 
+                   // isMatchFound = true;
                     if (order.Status == OrderStatus.FullyFilled)
                         break;
                 }
 
+                SellOrders.Add(order);
             }
-            Responses.Enqueue(response);
+            MatchResponses.Enqueue(response);
             return response;
         }
 

@@ -1,53 +1,45 @@
 ﻿using Microsoft.Owin.Hosting;
 using System;
-using System.Linq; 
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace ME
 {
     class Program
-    {
-
-
-        public static int serial_no = 0;
+    { 
         public static void Main(string[] args)
         {
-
-            using (WebApp.Start<Startup>(url: "http://localhost:8088"))
+            Task.Factory.StartNew(MainService.Instance.MatchMyOrder_CornJob);
+            var url = "http://localhost:8080";
+            using (WebApp.Start<Startup>(url: url))
             {
-                Console.WriteLine("Web Server is running.");
+                Console.WriteLine($"Web Server is running at : {url}.");
+
+
+
+
+                // Create HttpCient and make a request to api/values 
+                //HttpClient client = new HttpClient();
+
+                //var response = client.GetAsync(url + "/api/Order/Get").Result;
+
+                //Console.WriteLine(response);
+                //Console.WriteLine(response.Content.ReadAsStringAsync().Result);
+                //Console.ReadLine();
+
+
+
+
                 Console.WriteLine("Press any key to quit.");
                 Console.ReadLine();
             }
 
-
-
-
-
-
-
-
-
-
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+         
+         
         #region permutation
+        public static int serial_no = 0;
         static void CalcPermutation()
         {
             string str = "SHEKHARKUMARROY";

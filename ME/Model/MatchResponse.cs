@@ -4,7 +4,7 @@ using System.Text;
 
 namespace ME.Model
 {
-    class MatchResponse
+  public  class MatchResponse
     {
         public List<Order> UpdatedBuyOrders { get; set; }
         public List<Order> UpdatedSellOrders { get; set; }
