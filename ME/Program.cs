@@ -1,4 +1,5 @@
-﻿using Microsoft.Owin.Hosting;
+﻿using ME.Utility;
+using Microsoft.Owin.Hosting;
 using System;
 using System.Linq;
 using System.Net.Http;
@@ -16,21 +17,8 @@ namespace ME
             {
                 Console.WriteLine($"Web Server is running at : {url}.");
 
-
-
-
-                // Create HttpCient and make a request to api/values 
-                //HttpClient client = new HttpClient();
-
-                //var response = client.GetAsync(url + "/api/Order/Get").Result;
-
-                //Console.WriteLine(response);
-                //Console.WriteLine(response.Content.ReadAsStringAsync().Result);
-                //Console.ReadLine();
-
-
-
-
+                Me_Client.PlaceAllOrder(Me_Client.getRandomOrders(100),false);
+                 
                 Console.WriteLine("Press any key to quit.");
                 Console.ReadLine();
             }

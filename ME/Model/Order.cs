@@ -4,7 +4,7 @@ using System.Text;
 
 namespace ME.Model
 {
-   public class Order
+   public class Order :ICloneable
     {
         public long ID { get; set; }
         public long UserID { get; set; }
@@ -16,5 +16,10 @@ namespace ME.Model
         public DateTime AcceptedOn { get; set; }
         public DateTime ModifiedOn { get; set; }
         public OrderStatus Status { get; set; }
+
+        public object Clone()
+        {
+            return this.MemberwiseClone();
+        }
     }
 }

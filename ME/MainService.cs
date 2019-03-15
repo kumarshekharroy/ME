@@ -1,4 +1,5 @@
 ﻿using ME.Model;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -16,10 +17,10 @@ namespace ME
         //private readonly LinkedList<Order> BuyOrders = new LinkedList<Order>();
         //private readonly LinkedList<Order> SellOrders = new LinkedList<Order>();
         private readonly ConcurrentQueue<Order> PendingOrderQueue = new ConcurrentQueue<Order>();
-        private readonly List<Order> BuyOrders = new List<Order>();
-        private readonly List<Order> SellOrders = new List<Order>();
-        private readonly List<Trade> Trades = new List<Trade>();
-        private readonly Queue<MatchResponse> MatchResponses = new Queue<MatchResponse>();
+        private readonly ConcurrentBag<Order> BuyOrders = new ConcurrentBag<Order>();
+        private readonly ConcurrentBag<Order> SellOrders = new ConcurrentBag<Order>();
+        private readonly LinkedList<Trade> Trades = new LinkedList<Trade>();
+        private readonly ConcurrentBag<MatchResponse> MatchResponses = new ConcurrentBag<MatchResponse>();
 
         long OrderID, TradeID;
         private MainService()
@@ -46,14 +47,14 @@ namespace ME
                 return this.PendingOrderQueue;
             }
         }
-        public List<Order> AllSellOrders
+        public ConcurrentBag<Order> AllSellOrders
         {
             get
             {
                 return this.SellOrders;
             }
         }
-        public List<Order> AllBuyOrders
+        public ConcurrentBag<Order> AllBuyOrders
         {
             get
             {
@@ -61,7 +62,7 @@ namespace ME
             }
         }
 
-        public List<Trade> AllTrades
+        public LinkedList<Trade> AllTrades
         {
             get
             {
@@ -69,7 +70,7 @@ namespace ME
             }
         }
 
-        public Queue<MatchResponse> AllMatchResponses
+        public ConcurrentBag<MatchResponse> AllMatchResponses
         {
             get
             {
@@ -121,16 +122,14 @@ namespace ME
            // bool isMatchFound = false;
             if (order.Side == OrderSide.Buy)
             {
-                response.UpdatedBuyOrders.Add(order);
+                response.UpdatedBuyOrders.Add((Order)order.Clone());
                 var PossibleMatches = SellOrders.Where(x => x.Type == order.Type && x.Rate <= order.Rate && (x.Status == OrderStatus.Accepted || x.Status == OrderStatus.PartiallyFilled)).OrderBy(x => x.Rate).ThenBy(x => x.ID).ToList();
                 foreach (var sellOrder in PossibleMatches)
                 {
                     var trade = new Trade();
 
                     if (sellOrder.PendingVolume >= order.PendingVolume)//CompleteMatch
-                    {
-                        response.UpdatedBuyOrders.Add(order);
-
+                    { 
                         sellOrder.PendingVolume -= order.PendingVolume;
                         sellOrder.Status = sellOrder.PendingVolume <= 0 ? OrderStatus.FullyFilled : OrderStatus.PartiallyFilled;
                         sellOrder.ModifiedOn = CurrentTime;
@@ -149,12 +148,12 @@ namespace ME
                     }
                     else //PartialMatch
                     {
-                        sellOrder.PendingVolume = 0;
-                        sellOrder.Status = OrderStatus.FullyFilled;
-                        sellOrder.ModifiedOn = CurrentTime;
                         order.PendingVolume -= sellOrder.PendingVolume;
                         order.Status = order.PendingVolume <= 0 ? OrderStatus.FullyFilled : OrderStatus.PartiallyFilled;
                         order.ModifiedOn = CurrentTime;
+                        sellOrder.PendingVolume = 0;
+                        sellOrder.Status = OrderStatus.FullyFilled;
+                        sellOrder.ModifiedOn = CurrentTime;
 
 
                         trade.ID = this.getTradeID();
@@ -167,11 +166,11 @@ namespace ME
                         trade.UserID_Seller = sellOrder.UserID;
                     }
 
-                    response.UpdatedBuyOrders.Add(order);
-                    response.UpdatedSellOrders.Add(sellOrder);
+                    response.UpdatedBuyOrders.Add((Order)order.Clone());
+                    response.UpdatedSellOrders.Add((Order)sellOrder.Clone());
                     response.NewTrades.Add(trade);
 
-                    Trades.Add(trade);
+                    Trades.AddLast(trade);
                    // isMatchFound = true;
                     if (order.Status == OrderStatus.FullyFilled)
                         break;
@@ -182,16 +181,14 @@ namespace ME
 
             if (order.Side == OrderSide.Sell)
             {
-                response.UpdatedSellOrders.Add(order);
+                response.UpdatedSellOrders.Add((Order)order.Clone());
                 var PossibleMatches = BuyOrders.Where(x => x.Type == order.Type && x.Rate >= order.Rate && (x.Status == OrderStatus.Accepted || x.Status == OrderStatus.PartiallyFilled)).OrderByDescending(x => x.Rate).ThenBy(x => x.ID).ToList();
                 foreach (var buyOrder in PossibleMatches)
                 {
                     var trade = new Trade();
 
                     if (buyOrder.PendingVolume >= order.PendingVolume)//CompleteMatch
-                    {
-                        response.UpdatedSellOrders.Add(order);
-
+                    { 
                         buyOrder.PendingVolume -= order.PendingVolume;
                         buyOrder.Status = buyOrder.PendingVolume <= 0 ? OrderStatus.FullyFilled : OrderStatus.PartiallyFilled;
                         buyOrder.ModifiedOn = CurrentTime;
@@ -210,12 +207,12 @@ namespace ME
                     }
                     else //PartialMatch
                     {
-                        buyOrder.PendingVolume = 0;
-                        buyOrder.Status = OrderStatus.FullyFilled;
-                        buyOrder.ModifiedOn = CurrentTime;
                         order.PendingVolume -= buyOrder.PendingVolume;
                         order.Status = order.PendingVolume <= 0 ? OrderStatus.FullyFilled : OrderStatus.PartiallyFilled;
                         order.ModifiedOn = CurrentTime;
+                        buyOrder.PendingVolume = 0;
+                        buyOrder.Status = OrderStatus.FullyFilled;
+                        buyOrder.ModifiedOn = CurrentTime;
 
 
                         trade.ID = this.getTradeID();
@@ -228,11 +225,11 @@ namespace ME
                         trade.UserID_Seller = order.UserID;
                     }
 
-                    response.UpdatedBuyOrders.Add(buyOrder);
-                    response.UpdatedSellOrders.Add(order);
+                    response.UpdatedBuyOrders.Add((Order)buyOrder.Clone());
+                    response.UpdatedSellOrders.Add((Order)order.Clone());
                     response.NewTrades.Add(trade);
 
-                    Trades.Add(trade); 
+                    Trades.AddLast(trade); 
                    // isMatchFound = true;
                     if (order.Status == OrderStatus.FullyFilled)
                         break;
@@ -240,7 +237,8 @@ namespace ME
 
                 SellOrders.Add(order);
             }
-            MatchResponses.Enqueue(response);
+            MatchResponses.Add(response);
+           // Console.WriteLine(JsonConvert.SerializeObject(response, Formatting.Indented));
             return response;
         }
 

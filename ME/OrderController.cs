@@ -1,5 +1,6 @@
 ﻿
 using ME.Model;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -26,6 +27,7 @@ namespace ME
                 return new Response<object> { status = "badrequest", message = "invalid order payload" };
             var Response = MainService.Instance.PlaceMyOrder(order);
 
+            Console.WriteLine(JsonConvert.SerializeObject(Response, Formatting.Indented));
             return new Response<object> { status = "success", message = "order processed successfully", data = Response };
         }
         [HttpGet]

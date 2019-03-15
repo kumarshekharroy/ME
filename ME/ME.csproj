@@ -84,6 +84,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup.cs" />
+    <Compile Include="Utility\Me-Client.cs" />
     <Compile Include="WebSocketApi.cs" />
   </ItemGroup>
   <ItemGroup>
