@@ -20,7 +20,7 @@ namespace ME.Utility
             for (int i = 0; i < count; i++)
             {
                 // if(random.Next()%2==0)
-                orders.Add( new Order { Rate = RandomDecimalBetween(1, 2), Type = OrderType.Limit, Side = (random.Next() % 2 == 0) ? OrderSide.Sell : OrderSide.Buy, UserID = 250250, Volume = RandomDecimalBetween(1, 2) });
+                orders.Add( new Order { Rate = Math.Round(RandomDecimalBetween(1, 2),8), Type = OrderType.Limit, Side = (random.Next() % 2 == 0) ? OrderSide.Sell : OrderSide.Buy, UserID = 250250, Volume = Math.Round(RandomDecimalBetween(1, 2), 8) });
                 
             }
             return orders;
