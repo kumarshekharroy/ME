@@ -1,5 +1,6 @@
 ﻿using ME.Utility;
 using Microsoft.Owin.Hosting;
+using Newtonsoft.Json;
 using System;
 using System.Linq;
 using System.Net.Http;
@@ -17,8 +18,10 @@ namespace ME
             {
                 Console.WriteLine($"Web Server is running at : {url}.");
 
-                Me_Client.PlaceAllOrder(Me_Client.getRandomOrders(100),false);
+                Me_Client.PlaceAllOrder(Me_Client.getRandomOrders(1000000), true,false);
                  
+               // Console.WriteLine(JsonConvert.SerializeObject(MainService.Instance.GetStats, Formatting.Indented));
+
                 Console.WriteLine("Press any key to quit.");
                 Console.ReadLine();
             }

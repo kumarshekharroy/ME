@@ -12,6 +12,7 @@ namespace ME.Model
         public OrderType Type { get; set; }
         public decimal Volume { get; set; }
         public decimal Rate { get; set; }
+        public decimal Stop { get; set; }
         public decimal PendingVolume { get; set; }
         public DateTime AcceptedOn { get; set; }
         public DateTime ModifiedOn { get; set; }
