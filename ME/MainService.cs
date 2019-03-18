@@ -14,24 +14,28 @@ namespace ME
 {
     sealed class MainService
     {
-        private readonly int deciaml_precision = 4;
-        private readonly decimal dust_size = 0.001M;
+        private readonly int deciaml_precision = 8;
+        private readonly decimal dust_size = 0.000001M;
         private decimal current_Market_Price = 0M;
         private readonly object buyLock = new object();
         private readonly object sellLock = new object();
         private readonly object buyLock_stopLimit = new object();
         private readonly object sellLock_stopLimit = new object();
-       static long OrderID, TradeID;
+       
 
 
-        private MainService()
+        public MainService(int Precision=8,decimal DustSize=0.000001M)
         {
-            OrderID = 1000;
+            this.deciaml_precision = Precision;
+            this.dust_size = DustSize;
+            
+            Task.Run(() => MatchMyOrder_CornJob());
             Trades.ItemAdded += new Custom_ConcurrentQueue<Trade>.ItemAddedDelegate(newTradeNotification);
             MatchResponses.ItemAdded += new Custom_ConcurrentQueue<MatchResponse>.ItemAddedDelegate(newMatchResponsesNotification);
         }
-        private static readonly Lazy<MainService> lazy = new Lazy<MainService>(() => new MainService()); 
-        public static MainService Instance { get { return lazy.Value; } }
+
+        //private static readonly Lazy<MainService> lazy = new Lazy<MainService>(() => new MainService()); 
+        //public static MainService Instance { get { return lazy.Value; } }
          
         private readonly ConcurrentQueue<Order> PendingOrderQueue = new ConcurrentQueue<Order>();
 
@@ -45,18 +49,18 @@ namespace ME
 
         private readonly Custom_ConcurrentQueue<Trade> Trades = new Custom_ConcurrentQueue<Trade>(); 
         private readonly Custom_ConcurrentQueue<MatchResponse> MatchResponses = new Custom_ConcurrentQueue<MatchResponse>();
-
         private readonly Statistic statistic = new Statistic();
 
-       
+
+
 
         public long getOrderID()
         {
-            return Interlocked.Increment(ref OrderID);
+            return Interlocked.Increment(ref ME_Gateway.Instance.OrderID);
         }
         public long getTradeID()
         {
-            return Interlocked.Increment(ref TradeID);
+            return Interlocked.Increment(ref ME_Gateway.Instance.OrderID);
         }
 
 
@@ -105,7 +109,7 @@ namespace ME
             });
 
         } 
-        public void newMatchResponsesNotification(MatchResponse trade)
+        public void newMatchResponsesNotification(MatchResponse matchResponse)
         {
             //send push Notification using socket;
         }
@@ -270,6 +274,8 @@ namespace ME
                     if (PendingOrderQueue.TryDequeue(out order))
                         MatchMyOrder(order);
                 }
+                else
+                    Task.Delay(100).Wait();
             }
 
         }
@@ -601,10 +607,10 @@ namespace ME
             }
 
             MatchResponses.Enqueue(response);
-
+            this.statistic.inc_processed();
             stopwatch.Stop();
             // Console.WriteLine(JsonConvert.SerializeObject(response, Formatting.Indented));
-            //Console.WriteLine($"{order.ID} => {stopwatch.ElapsedTicks}");
+             Console.WriteLine($"{order.ID} => {stopwatch.ElapsedTicks}");
             return response;
         }
 

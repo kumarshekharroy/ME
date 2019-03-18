@@ -13,12 +13,13 @@ namespace ME.Model
         private static readonly object submission_lock = new object();
         private static readonly object cancellation_lock = new object(); 
 
-        private int _Submission, _Cancellation;
+        private int _Submission, _Cancellation, _Processed;
         public Statistic()
         {
             this.InitTime = DateTime.UtcNow;
         }
         public int Submission { get { return _Submission; } }
+        public int Processed { get { return _Processed; } }
         public int Trades { get; set; }
         public int Cancellation { get { return _Cancellation; } }
         public int Book { get; set; }
@@ -37,6 +38,11 @@ namespace ME.Model
         {
             //lock (cancellation_lock)
             Interlocked.Increment(ref _Cancellation);
+        }
+        public void inc_processed()
+        {
+            //lock (cancellation_lock)
+            Interlocked.Increment(ref _Processed);
         }
     }
 }

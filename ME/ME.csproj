@@ -75,6 +75,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MainService.cs" />
+    <Compile Include="ME_Gateway.cs" />
     <Compile Include="Model\Constants.cs" />
     <Compile Include="Model\MatchResponse.cs" />
     <Compile Include="Model\Order.cs" />

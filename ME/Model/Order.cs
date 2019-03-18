@@ -8,6 +8,7 @@ namespace ME.Model
     {
         public long ID { get; set; }
         public long UserID { get; set; }
+        public string Pair { get; set; }
         public OrderSide Side { get; set; }
         public OrderType Type { get; set; }
         public decimal Volume { get; set; }
@@ -22,5 +23,10 @@ namespace ME.Model
         {
             return this.MemberwiseClone();
         }
+    }
+    public class BulkOrder
+    {
+        public List<Order> orders { get; set; }
+        public string Pair { get; set; }
     }
 }

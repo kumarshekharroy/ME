@@ -12,13 +12,13 @@ namespace ME
     { 
         public static void Main(string[] args)
         {
-            Task.Factory.StartNew(MainService.Instance.MatchMyOrder_CornJob);
+            //Task.Factory.StartNew(MainService.Instance.MatchMyOrder_CornJob);
             var url = "http://localhost:8080";
             using (WebApp.Start<Startup>(url: url))
             {
                 Console.WriteLine($"Web Server is running at : {url}.");
 
-                Me_Client.PlaceAllOrder(Me_Client.getRandomOrders(1000000), true,false);
+                Me_Client.PlaceAllOrder(Me_Client.getRandomOrders(200000), true,false);
                  
                // Console.WriteLine(JsonConvert.SerializeObject(MainService.Instance.GetStats, Formatting.Indented));
 

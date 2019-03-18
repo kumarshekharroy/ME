@@ -15,7 +15,8 @@ namespace ME.Utility
         private static int deciaml_precision = 4;
         private static readonly string endpoint_SingleOrder = "http://localhost:8080/PlaceOrder";
         private static readonly string endpoint_BulkOrder = "http://localhost:8080/PlaceBulkOrders";
-
+        private static List<string> pairs = new List<string> { "BTC","XRP","LTC","ETH"};
+        
         private static decimal RandomDecimalBetween(decimal minValue, decimal maxValue)
         {
             var next = (decimal)random.NextDouble();
@@ -29,7 +30,7 @@ namespace ME.Utility
             for (int i = 0; i < count; i++)
             {
                 // if(random.Next()%2==0)
-                orders.Add(new Order { Rate = Math.Round(RandomDecimalBetween(0, 1), deciaml_precision), Type = OrderType.Limit, Side = (random.Next() % 2 == 0) ? OrderSide.Sell : OrderSide.Buy, UserID = 250250, Volume = Math.Round(RandomDecimalBetween(0, 1), deciaml_precision) });
+                orders.Add(new Order { Rate = Math.Round(RandomDecimalBetween(0, 1), deciaml_precision),Pair= pairs[random.Next(pairs.Count)], Type = OrderType.Limit, Side = (random.Next() % 2 == 0) ? OrderSide.Sell : OrderSide.Buy, UserID = 250250, Volume = Math.Round(RandomDecimalBetween(0, 1), deciaml_precision) });
 
             }
             return orders;
