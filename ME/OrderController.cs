@@ -31,7 +31,7 @@ namespace ME
             if (order == null || string.IsNullOrWhiteSpace(order.Pair))
                 return new Response<object> { status = "badrequest", message = "invalid order payload" };
             var Response = ME_Gateway.Instance[order.Pair].PlaceMyOrder(order);
-
+            // WCTicker.Instance.PushTicker(order.Pair, order);
             // Console.WriteLine(JsonConvert.SerializeObject(Response, Formatting.Indented));
             //Console.WriteLine($"\t \t \t \t {Response.ID}");
             return new Response<object> { status = "success", message = "order processed successfully", data = Response };

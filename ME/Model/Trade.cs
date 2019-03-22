@@ -14,6 +14,7 @@ namespace ME.Model
             TimeStamp = dateTime ?? DateTime.UtcNow;
         }
         public long ID { get; set; }
+        public string Pair { get; set; }
         public long UserID_Buyer { get; set; }
         public long UserID_Seller { get; set; }
         public long OrderID_Buy { get; set; }

@@ -14,21 +14,21 @@ namespace ME
 {
     sealed class MainService
     {
-        private readonly int deciaml_precision = 8;
-        private readonly decimal dust_size = 0.000001M;
+        private readonly int deciaml_precision;
+        private readonly decimal dust_size;
         private decimal current_Market_Price = 0M;
         private readonly object buyLock = new object();
         private readonly object sellLock = new object();
         private readonly object buyLock_stopLimit = new object();
         private readonly object sellLock_stopLimit = new object();
-       
+        private readonly WCTicker WCTicker_Instance= WCTicker.Instance;
 
 
-        public MainService(int Precision=8,decimal DustSize=0.000001M)
+        public MainService(int Precision = 8, decimal DustSize = 0.000001M)
         {
             this.deciaml_precision = Precision;
             this.dust_size = DustSize;
-            
+          
             Task.Run(() => MatchMyOrder_CornJob());
             Trades.ItemAdded += new Custom_ConcurrentQueue<Trade>.ItemAddedDelegate(newTradeNotification);
             MatchResponses.ItemAdded += new Custom_ConcurrentQueue<MatchResponse>.ItemAddedDelegate(newMatchResponsesNotification);
@@ -36,7 +36,7 @@ namespace ME
 
         //private static readonly Lazy<MainService> lazy = new Lazy<MainService>(() => new MainService()); 
         //public static MainService Instance { get { return lazy.Value; } }
-         
+
         private readonly ConcurrentQueue<Order> PendingOrderQueue = new ConcurrentQueue<Order>();
 
         private readonly SortedDictionary<decimal, LinkedList<Order>> BuyOrdersDict = new SortedDictionary<decimal, LinkedList<Order>>();
@@ -47,7 +47,7 @@ namespace ME
         private readonly SortedDictionary<decimal, LinkedList<Order>> StopLimit_SellOrdersDict = new SortedDictionary<decimal, LinkedList<Order>>();
 
 
-        private readonly Custom_ConcurrentQueue<Trade> Trades = new Custom_ConcurrentQueue<Trade>(); 
+        private readonly Custom_ConcurrentQueue<Trade> Trades = new Custom_ConcurrentQueue<Trade>();
         private readonly Custom_ConcurrentQueue<MatchResponse> MatchResponses = new Custom_ConcurrentQueue<MatchResponse>();
         private readonly Statistic statistic = new Statistic();
 
@@ -107,11 +107,16 @@ namespace ME
                     shouldContinue = true;
                 } while (shouldContinue);
             });
-
-        } 
+            var NotificationTask = Task.Run(() =>
+            {
+              //  WCTicker_Instance.PushTicker(trade.Pair, trade);
+            });
+        }
         public void newMatchResponsesNotification(MatchResponse matchResponse)
         {
             //send push Notification using socket;
+           // WCTicker_Instance.PushTicker(matchResponse.Pair, matchResponse);
+
         }
 
 
@@ -139,7 +144,7 @@ namespace ME
             {
                 return this.BuyOrdersDict.Count + this.SellOrdersDict.Count;
             }
-        } 
+        }
         public ConcurrentQueue<Order> AllPendingOrderQueue
         {
             get
@@ -169,7 +174,7 @@ namespace ME
             {
                 return this.Trades;
             }
-        } 
+        }
         public ConcurrentQueue<MatchResponse> AllMatchResponses
         {
             get
@@ -288,6 +293,7 @@ namespace ME
             var CurrentTime = DateTime.UtcNow;
             MatchResponse response = new MatchResponse
             {
+                Pair=order.Pair,
                 UpdatedBuyOrders = new List<Order>(),
                 UpdatedSellOrders = new List<Order>(),
                 NewTrades = new List<Trade>()
@@ -376,6 +382,7 @@ namespace ME
                                     order.ModifiedOn = CurrentTime;
 
                                     trade.ID = this.getTradeID();
+                                    trade.Pair = order.Pair;
                                     trade.OrderID_Buy = order.ID;
                                     trade.OrderID_Sell = sellOrder.ID;
                                     trade.Side = order.Side;
@@ -395,6 +402,7 @@ namespace ME
 
 
                                     trade.ID = this.getTradeID();
+                                    trade.Pair = order.Pair;
                                     trade.OrderID_Buy = order.ID;
                                     trade.OrderID_Sell = sellOrder.ID;
                                     trade.Side = order.Side;
@@ -610,7 +618,7 @@ namespace ME
             this.statistic.inc_processed();
             stopwatch.Stop();
             // Console.WriteLine(JsonConvert.SerializeObject(response, Formatting.Indented));
-             Console.WriteLine($"{order.ID} => {stopwatch.ElapsedTicks}");
+            Console.WriteLine($"{order.ID} => {stopwatch.ElapsedTicks}");
             return response;
         }
 

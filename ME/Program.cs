@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using WebSocketSharp.Server;
 
 namespace ME
 {
@@ -12,22 +13,30 @@ namespace ME
     { 
         public static void Main(string[] args)
         {
-            //Task.Factory.StartNew(MainService.Instance.MatchMyOrder_CornJob);
+            //Task.Factory.StartNew(()=>StartWCServer());
             var url = "http://localhost:8080";
             using (WebApp.Start<Startup>(url: url))
             {
                 Console.WriteLine($"Web Server is running at : {url}.");
 
-                Me_Client.PlaceAllOrder(Me_Client.getRandomOrders(200000), true,false);
-                 
-               // Console.WriteLine(JsonConvert.SerializeObject(MainService.Instance.GetStats, Formatting.Indented));
+
+                StartWCServer();
+                //Me_Client.PlaceAllOrder(Me_Client.getRandomOrders(200000), true,false);
 
                 Console.WriteLine("Press any key to quit.");
                 Console.ReadLine();
             }
 
+           
         }
-         
+         public static void StartWCServer()
+        {
+            var wssv = new WebSocketServer("ws://localhost:8088");
+            wssv.AddWebSocketService<WCTicker>("/MEWCTicker");
+            wssv.Start();
+            Console.ReadKey(true);
+            wssv.Stop();
+        }
          
         #region permutation
         public static int serial_no = 0;
