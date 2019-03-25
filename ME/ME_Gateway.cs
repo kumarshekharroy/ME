@@ -51,7 +51,10 @@ namespace ME
         {
             if (string.IsNullOrWhiteSpace(pair))
             {
-                listedPairs.ForEach((_pair) => { if (remove) { _listedPairs.TryRemove(_pair, out MainService mainService); } else { _listedPairs[_pair] = new MainService { }; } });
+                if (remove)
+                    _listedPairs.Clear();
+                else
+                    listedPairs.ForEach((_pair) => { _listedPairs[_pair] = new MainService { }; });
             }
             else
                 if (remove) { _listedPairs.TryRemove(pair, out MainService mainService); } else { _listedPairs[pair] = new MainService { }; }

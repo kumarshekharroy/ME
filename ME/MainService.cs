@@ -68,44 +68,51 @@ namespace ME
         {
             var SellActivationTask = Task.Run(() =>
             {
-
-                var shouldContinue = false;
-                do
+                lock (sellLock_stopLimit)
                 {
-                    var stopprice = StopLimit_SellOrdersDict.Keys.Reverse().FirstOrDefault();
-                    if (stopprice < trade.Rate)
-                        break;  //Break as No StopLimitSell Order above Current Trading price;
-
-                    foreach (var order in StopLimit_SellOrdersDict[stopprice])
+                    var shouldContinue = false;
+                    do
                     {
-                        order.Type = OrderType.StopLimitToLimit;
-                        PendingOrderQueue.Enqueue(order);
-                    }
-                    lock (sellLock_stopLimit)
-                        StopLimit_SellOrdersDict.Remove(stopprice);
 
-                    shouldContinue = true;
-                } while (shouldContinue);
+                        var stopprice = StopLimit_SellOrdersDict.Keys.Reverse().FirstOrDefault();
+                        if (stopprice < trade.Rate)
+                            break;  //Break as No StopLimitSell Order above Current Trading price;
+
+                        foreach (var order in StopLimit_SellOrdersDict[stopprice])
+                        {
+                            order.Type = OrderType.StopLimitToLimit;
+                            PendingOrderQueue.Enqueue(order);
+                        }
+
+                        StopLimit_SellOrdersDict.Remove(stopprice);
+                        shouldContinue = true;
+                    } while (shouldContinue);
+                }
+
             });
             var BuyActivationTask = Task.Run(() =>
             {
-                var shouldContinue = false;
-                do
+                lock (buyLock_stopLimit)
                 {
-                    var stopprice = StopLimit_BuyOrdersDict.Keys.FirstOrDefault();
-                    if (stopprice == 0 || stopprice > trade.Rate)
-                        break;  //Break as No StopLimitBuy Order above Current Trading price;
-
-                    foreach (var order in StopLimit_BuyOrdersDict[stopprice])
+                    var shouldContinue = false;
+                    do
                     {
-                        order.Type = OrderType.StopLimitToLimit;
-                        PendingOrderQueue.Enqueue(order);
-                    }
-                    lock (buyLock_stopLimit)
+                        var stopprice = StopLimit_BuyOrdersDict.Keys.FirstOrDefault();
+                        if (stopprice == 0 || stopprice > trade.Rate)
+                            break;  //Break as No StopLimitBuy Order below Current Trading price;
+
+                        foreach (var order in StopLimit_BuyOrdersDict[stopprice])
+                        {
+                            order.Type = OrderType.StopLimitToLimit;
+                            PendingOrderQueue.Enqueue(order);
+                        }
+
                         StopLimit_BuyOrdersDict.Remove(stopprice);
 
-                    shouldContinue = true;
-                } while (shouldContinue);
+                        shouldContinue = true;
+                    } while (shouldContinue);
+
+                }
             });
             var NotificationTask = Task.Run(() =>
             {
@@ -218,25 +225,27 @@ namespace ME
                 {
                     if (order.Side == OrderSide.Buy)
                     {
-                        LinkedList<Order> orderList;
-                        if (StopLimit_BuyOrdersDict.TryGetValue(order.Stop, out orderList))
-                            lock (buyLock_stopLimit)
+                        lock (buyLock_stopLimit)
+                        {
+                            LinkedList<Order> orderList;
+                            if (StopLimit_BuyOrdersDict.TryGetValue(order.Stop, out orderList))
                                 orderList.AddLast(order);
-                        else
-                            lock (buyLock_stopLimit)
+                            else
                                 StopLimit_BuyOrdersDict[order.Stop] = new LinkedList<Order>(new List<Order> { order });
+                        }
+
                     }
                     else if (order.Side == OrderSide.Sell)
                     {
-                        LinkedList<Order> orderList;
-                        if (StopLimit_SellOrdersDict.TryGetValue(order.Stop, out orderList))
-                            lock (sellLock_stopLimit)
+                        lock (sellLock_stopLimit)
+                        {
+                            LinkedList<Order> orderList;
+                            if (StopLimit_SellOrdersDict.TryGetValue(order.Stop, out orderList))
                                 orderList.AddLast(order);
-                        else
-                            lock (sellLock_stopLimit)
-                                StopLimit_SellOrdersDict[order.Stop] = new LinkedList<Order>(new List<Order> { order });
-                    }
-
+                            else
+                                StopLimit_SellOrdersDict[order.Stop] = new LinkedList<Order>(new List<Order> { order }); 
+                        }
+                    } 
                 }
             }
             else
