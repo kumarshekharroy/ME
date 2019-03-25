@@ -15,7 +15,6 @@ namespace ME
         private ME_Gateway()
         {
             this.OrderID = 1000;
-         new WCTicker();
         }
         private readonly object listedPairs_CreationLock = new object();
         private static readonly Lazy<ME_Gateway> lazy = new Lazy<ME_Gateway>(() => new ME_Gateway());
@@ -41,7 +40,7 @@ namespace ME
                             if (!_listedPairs.TryAdd(pair, ME_Service))
                                 throw new InvalidOperationException("Failed to instantiate ME pair.Please Retry.");
                         }
-                       
+
                     }
                 }
                 return ME_Service;
@@ -51,12 +50,12 @@ namespace ME
         public void ResetPair(string pair = "", bool remove = true)
         {
             if (string.IsNullOrWhiteSpace(pair))
-            { 
-                    listedPairs.ForEach((_pair)=> { if (remove) { _listedPairs.TryRemove(_pair, out MainService mainService); } else { _listedPairs[_pair] = new MainService { }; }}); 
+            {
+                listedPairs.ForEach((_pair) => { if (remove) { _listedPairs.TryRemove(_pair, out MainService mainService); } else { _listedPairs[_pair] = new MainService { }; } });
             }
             else
                 if (remove) { _listedPairs.TryRemove(pair, out MainService mainService); } else { _listedPairs[pair] = new MainService { }; }
-            
+
         }
     }
 }

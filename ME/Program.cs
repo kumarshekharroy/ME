@@ -10,7 +10,8 @@ using WebSocketSharp.Server;
 namespace ME
 {
     class Program
-    { 
+    {
+        public static WebSocketServer wssv;
         public static void Main(string[] args)
         {
             //Task.Factory.StartNew(()=>StartWCServer());
@@ -31,8 +32,9 @@ namespace ME
         }
          public static void StartWCServer()
         {
-            var wssv = new WebSocketServer("ws://localhost:8088");
-            wssv.AddWebSocketService<WCTicker>("/MEWCTicker");
+             wssv = new WebSocketServer("ws://localhost:8088");
+            wssv.AddWebSocketService<WC_MatchTicker>("/MEWC_MatchTicker");
+            wssv.AddWebSocketService<WC_TradeTicker>("/MEWC_TradeTicker");
             wssv.Start();
             Console.ReadKey(true);
             wssv.Stop();

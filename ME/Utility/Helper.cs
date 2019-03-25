@@ -21,4 +21,9 @@ namespace ME.Utility
     class Helper
     {
     }
+    class EndPoint
+    {
+        public  string EndPointType { get; set; }
+        public  Uri EndPointUri { get; set; }
+    }
 }

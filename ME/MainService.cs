@@ -21,7 +21,7 @@ namespace ME
         private readonly object sellLock = new object();
         private readonly object buyLock_stopLimit = new object();
         private readonly object sellLock_stopLimit = new object();
-        private readonly WCTicker WCTicker_Instance= WCTicker.Instance;
+       // private readonly WCTicker WCTicker_Instance= WCTicker.Instance;
 
 
         public MainService(int Precision = 8, decimal DustSize = 0.000001M)
@@ -60,7 +60,7 @@ namespace ME
         }
         public long getTradeID()
         {
-            return Interlocked.Increment(ref ME_Gateway.Instance.OrderID);
+            return Interlocked.Increment(ref ME_Gateway.Instance.TradeID);
         }
 
 
@@ -109,13 +109,13 @@ namespace ME
             });
             var NotificationTask = Task.Run(() =>
             {
-              //  WCTicker_Instance.PushTicker(trade.Pair, trade);
+             WC_TradeTicker.PushTicker(trade.Pair, trade);
             });
         }
         public void newMatchResponsesNotification(MatchResponse matchResponse)
         {
             //send push Notification using socket;
-           // WCTicker_Instance.PushTicker(matchResponse.Pair, matchResponse);
+            WC_MatchTicker.PushTicker(matchResponse.Pair, matchResponse);
 
         }
 
@@ -187,7 +187,7 @@ namespace ME
         //Self match allowed
         public Order PlaceMyOrder(Order order)
         {
-            if (order == null)
+            if (order == null || string.IsNullOrWhiteSpace(order.Pair))
                 return default(Order);
 
             order.Rate = order.Rate.TruncateDecimal(deciaml_precision);
@@ -288,8 +288,8 @@ namespace ME
         //Self match allowed
         public MatchResponse MatchMyOrder(Order order)
         {
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
+            //var stopwatch = new Stopwatch();
+            //stopwatch.Start();
             var CurrentTime = DateTime.UtcNow;
             MatchResponse response = new MatchResponse
             {
@@ -541,6 +541,7 @@ namespace ME
                                     order.ModifiedOn = CurrentTime;
 
                                     trade.ID = this.getTradeID();
+                                    trade.Pair = order.Pair;
                                     trade.OrderID_Buy = buyOrder.ID;
                                     trade.OrderID_Sell = order.ID;
                                     trade.Side = order.Side;
@@ -560,6 +561,7 @@ namespace ME
 
 
                                     trade.ID = this.getTradeID();
+                                    trade.Pair = order.Pair;
                                     trade.OrderID_Buy = buyOrder.ID;
                                     trade.OrderID_Sell = order.ID;
                                     trade.Side = order.Side;
@@ -616,9 +618,9 @@ namespace ME
 
             MatchResponses.Enqueue(response);
             this.statistic.inc_processed();
-            stopwatch.Stop();
+            //stopwatch.Stop();
             // Console.WriteLine(JsonConvert.SerializeObject(response, Formatting.Indented));
-            Console.WriteLine($"{order.ID} => {stopwatch.ElapsedTicks}");
+            // Console.WriteLine($"{order.ID} => {stopwatch.ElapsedMilliseconds}");
             return response;
         }
 

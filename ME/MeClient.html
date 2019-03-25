@@ -1,0 +1,603 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Matching Engine</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="Lib/bootstrap.min.css">
+    <script src="Lib/angular.min.js"></script>
+    <script src="Lib/popper.min.js"></script>
+    <script src="Lib/jquery.min.js"></script>
+    <script src="Lib/bootstrap.min.js"></script>
+    <link href="Lib/Styles.css" rel="stylesheet" />
+    <link href="Lib/iziToast.min.css" rel="stylesheet" />
+    <script src="Lib/iziToast.min.js"></script>
+</head>
+<body ng-app="myApp">
+
+    <div class="container-fluid" ng-controller="myController" ng-init="selectedPair=''">
+
+        <h1 class="text-center">Matching Engine Client</h1>
+        <br />
+        <button type="button" class="btn btn-info btn-lg" ng-click="GetStats(true)">Stats</button>
+        <button type="button" class="btn btn-info btn-lg" ng-click="openManageModal()">Manage</button>
+        <button type="button" class="btn btn-info btn-lg" ng-click="getEndpoints()">Endpoints</button>
+
+        <div class="col-sm-12" ng-cloak ng-show="ws_trade">
+            <br />
+            <hr />
+            <br />
+            <h2 class="text-center">Trades (Last 10)</h2>
+            <br />
+            <table class="table table-bordered table-condensed">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Pair</th>
+                        <th>UserID(Buy/Sell)</th>
+                        <th>OrderID(Buy/Sell)</th>
+                        <th>Side</th>
+                        <th>Volume</th>
+                        <th>Rate</th>
+                        <th>TimeStamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-class="item.Side==1?'success':'danger'" ng-repeat="item in Trades">
+                        <td ng-bind="item.ID"></td>
+                        <td ng-bind="item.Pair"></td>
+                        <td ng-bind="item.UserID_Buyer+'/'+item.UserID_Seller"></td>
+                        <td ng-bind="item.OrderID_Buy+'/'+item.OrderID_Sell"></td>
+                        <td ng-bind="item.Side"></td>
+                        <td ng-bind="item.Volume"></td>
+                        <td ng-bind="item.Rate"></td>
+                        <td ng-bind="item.TimeStamp | date : format : timezone"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col-sm-12" ng-cloak ng-show="ws_match">
+
+            <br />
+            <hr />
+            <br />
+
+            <h2 class="text-center">Matches (Last 10)</h2>
+            <br />
+            <table class="table table-stripped table-bordered table-condensed">
+                <thead>
+                    <tr>
+                        <th>Pair</th>
+                        <th>OD_ID</th>
+                        <th>UserID</th>
+                        <th>Type</th>
+                        <th>Stop</th>
+                        <th>Rate</th>
+                        <th>Pending/Orig Vol</th>
+                        <th>Accepted Dt</th>
+                        <th>Modified Dt</th>
+                        <th>Status</th>
+                        <th>TradeID</th>
+                        <th>Buyer/Seller</th>
+                        <th>BuyID/SellID)</th>
+                        <th>Volume</th>
+                        <th>Rate</th>
+                        <th>TimeStamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="item in Matches">
+                        <td ng-bind="item.Pair"></td>
+                        <td colspan="9" style="padding:0">
+
+                            <table class="table  table-condensed">
+
+                                <tbody>
+                                    <tr ng-class="'danger'" ng-repeat=" inneritem in item.UpdatedSellOrders">
+                                        <td ng-bind="inneritem.ID"></td>
+                                        <td ng-bind="inneritem.UserID"></td>
+                                        <td ng-bind="inneritem.Type"></td>
+                                        <td ng-bind="inneritem.Stop| number:4"></td>
+                                        <td ng-bind="inneritem.Rate| number:4"></td>
+                                        <td ng-bind="inneritem.PendingVolume+'/'+inneritem.Volume"></td>
+                                        <td ng-bind="inneritem.AcceptedOn| date : format : timezone"></td>
+                                        <td ng-bind="inneritem.ModifiedOn| date : format : timezone"></td>
+                                        <td ng-bind="inneritem.Status"></td>
+                                    </tr>
+                                    <tr ng-class="'success'" ng-repeat=" inneritem in item.UpdatedBuyOrders">
+                                        <td ng-bind="inneritem.ID"></td>
+                                        <td ng-bind="inneritem.UserID"></td>
+                                        <td ng-bind="inneritem.Type"></td>
+                                        <td ng-bind="inneritem.Stop| number:4"></td>
+                                        <td ng-bind="inneritem.Rate| number:4"></td>
+                                        <td ng-bind="inneritem.PendingVolume+'/'+inneritem.Volume"></td>
+                                        <td ng-bind="inneritem.AcceptedOn | date : format : timezone"></td>
+                                        <td ng-bind="inneritem.ModifiedOn | date : format : timezone"></td>
+                                        <td ng-bind="inneritem.Status"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+
+                        </td>
+                        <td colspan="7" style="padding:0">
+                            <table class="table table-bordered table-condensed">
+                                <tbody>
+                                    <tr ng-class="inneritem.Side==1?'success':'danger'" ng-repeat=" inneritem in item.NewTrades">
+                                        <td ng-bind="inneritem.ID"></td>
+                                        <td ng-bind="inneritem.UserID_Buyer+'/'+inneritem.UserID_Seller"></td>
+                                        <td ng-bind="inneritem.OrderID_Buy+'/'+inneritem.OrderID_Sell"></td>
+                                        <td ng-bind="inneritem.Volume"></td>
+                                        <td ng-bind="inneritem.Rate"></td>
+                                        <td ng-bind="inneritem.TimeStamp | date : format : timezone"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+
+
+
+
+
+
+
+
+
+
+        <!-- Modal Stats -->
+        <div class="modal fade" id="ME_Stats_Modal" role="dialog">
+            <div class="modal-dialog modal-lg">
+
+                <!-- Modal content-->
+                <div class="modal-content modal-lg">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Matching Engine Live Statistics</h4>
+                        <button type="button" class="close" ng-click="closeStatsModal()" data-dismiss="modal">&times;</button>
+                    </div>  <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-sm-4">
+                                        <div class="form-group">
+                                            <label for="numberOfOrders" class="mb-2 mr-sm-2">Refresh Interval ( MilliSeconds ):</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-4">
+                                        <div class="form-group">
+                                            <input class="form-control" type="number" id="RefreshInterval" ng-model="StatsRefreshInterval" max="1000000" />
+                                        </div>
+                                    </div>
+
+                                </div>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Pair</th>
+                                    <th>Submission</th>
+                                    <th>Processed</th>
+                                    <th>Trades</th>
+                                    <th>Cancellation</th>
+                                    <th>Book</th>
+                                    <th>OpenOrders</th>
+                                    <th>DustOrders</th>
+                                    <th>TPS</th>
+                                    <th>Pair InitTime</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="item in Stats">
+                                    <td ng-bind="item.pair"></td>
+                                    <td ng-bind="item.stat.submission"></td>
+                                    <td ng-bind="item.stat.processed"></td>
+                                    <td ng-bind="item.stat.trades"></td>
+                                    <td ng-bind="item.stat.cancellation"></td>
+                                    <td ng-bind="item.stat.book"></td>
+                                    <td ng-bind="item.stat.openOrders"></td>
+                                    <td ng-bind="item.stat.dustOrders"></td>
+                                    <td ng-bind="item.stat.tps"></td>
+                                    <td ng-bind="item.stat.initTime | date : format : timezone"></td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td ng-bind="'Total : '"></td>
+                                    <td ng-bind="TotalStats.Submission"></td>
+                                    <td ng-bind="TotalStats.Processed"></td>
+                                    <td ng-bind="TotalStats.Trades"></td>
+                                    <td ng-bind="TotalStats.Cancellation"></td>
+                                    <td ng-bind="TotalStats.Book"></td>
+                                    <td ng-bind="TotalStats.OpenOrders"></td>
+                                    <td ng-bind="TotalStats.DustOrders"></td>
+                                    <td ng-bind="TotalStats.TPS"></td>
+                                    <td>N/A</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+        <!-- Modal -->
+        <div class="modal fade" id="ME_Endpoints_Modal" role="dialog">
+            <div class="modal-dialog modal-lg">
+
+                <!-- Modal content-->
+                <div class="modal-content modal-lg">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Matching Engine Endpoints</h4>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>  <div class="modal-body">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Type</th>
+                                    <th>Endpoint</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="item in  Endpoints">
+                                    <td>{{$index+1}}</td>
+                                    <td ng-bind="item.endPointType"></td>
+                                    <td ng-bind="item.endPointUri"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+
+        <!-- Modal Manage-->
+        <div class="modal fade" id="ME_Manage_Modal" role="dialog">
+            <div class="modal-dialog modal-lg">
+
+                <!-- Modal content-->
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Matching Engine Client Settings</h4>
+                        <button type="button" class="close" data-dismiss="modal" ng-click="closeStatsModal()">&times;</button>
+                    </div>  <div class="modal-body">
+                        <div class="row">
+
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label for="numberOfOrders" class="mb-2 mr-sm-2">Number Of Orders:</label>
+                                    <input class="form-control" type="number" id="numberOfOrders" ng-model="numberOfOrders" max="1000000" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="inParallel" class="mb-2 mr-sm-2">In Parallel:</label>
+                                    <input class="form-control" type="checkbox" id="inParallel" ng-model="inParallel">
+                                </div>
+                                <div class="form-group">
+                                    <label for="isBulk" class="mb-2 mr-sm-2">Bulk Mode:</label>
+                                    <input class="form-control" type="checkbox" id="isBulk" ng-model="isBulk">
+                                </div>
+                                <div class="form-group">
+                                    <label for="interval" class="mb-2 mr-sm-2">interval:</label>
+                                    <input class="form-control" type="number" id="interval" ng-disabled="inParallel || isBulk" ng-model="interval" max="100000" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="pair_" class="mb-2 mr-sm-2">pair:</label>
+                                    <input class="form-control" type="text" id="pair_" ng-disabled="!isBulk" ng-model="pair" value="ETH_USDT" />
+                                </div>
+                                <div class="form-group text-center">
+                                    <button id="placeOrder" type="button" class="btn btn-sm btn-success" ng-disabled="numberOfOrders<=0 || (isBulk && (!pair || pair.trim()== ''))" ng-click="PlaceOrder(numberOfOrders,inParallel,isBulk,pair,interval)">Place Order</button>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="col-sm-12">
+                                    <div class="form-group">
+                                        <label for="btn_ws_trade" class="mb-2 mr-sm-2">Trade Ticker:</label>
+                                        <button id="btn_ws_trade" type="button" class="btn btn-sm" ng-class="ws_trade?'btn-danger':'btn-success'" ng-click="SubTradeTicker()"><span ng-bind="ws_trade?'Unsubscribe':'Subscribe'"></span></button>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="btn_ws_match" class="mb-2 mr-sm-2">Match Ticker:</label>
+                                        <button id="btn_ws_match" type="button" class="btn btn-sm" ng-class="ws_match?'btn-danger':'btn-success'" ng-click="SubMatchTicker()"><span ng-bind="ws_match?'Unsubscribe':'Subscribe'"></span></button>
+
+                                    </div>
+
+                                    <br />
+                                    <br />
+                                    <br />
+                                </div>
+                                <div class="col-sm-12">
+                                    <div class="form-group">
+                                        <label for="pair">Pair:</label>
+                                        <select class="form-control" id="pair" ng-model="selectedPair">
+                                            <option value="">Select Pair</option>
+                                            <option ng-repeat="item in Stats" ng-value="item.pair">{{item.pair}}</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group text-center">
+                                        <button id="resetMe" type="button" class="btn btn-sm btn-danger" ng-disabled="selectedPair==undefined" ng-click="ResetME(selectedPair)">Reset ME Pair</button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                    <!--<div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    </div>-->
+                </div>
+
+            </div>
+        </div>
+
+
+
+
+
+
+
+
+
+    </div>
+    <script>
+
+
+        function closeModal(id) {
+            $("#" + id + " .close").click();
+        }
+
+
+        function openModal(id) {
+            $('#' + id).modal({
+                backdrop: 'static',
+                keyboard: false
+            });
+        }
+
+        function ShowAlert(msg, type) {
+            if (msg != null && msg != undefined) {
+                if (type == 'error') {
+
+                    iziToast.error({
+                        position: 'center',
+                        messageSize: '20',
+                        message: msg,
+                        progressBarColor: '#01b6ad',
+                    });
+                }
+                else if (type == 'success') {
+                    iziToast.success({
+                        position: 'center',
+                        messageSize: '20',
+                        message: msg,
+                        progressBarColor: '#01b6ad',
+                    });
+                }
+                else if (type == 'warning') {
+                    iziToast.warning({
+                        position: 'center',
+                        messageSize: '20',
+                        message: msg,
+                        progressBarColor: '#01b6ad',
+                    });
+                }
+                else if (type == 'info') {
+                    iziToast.info({
+                        position: 'center',
+                        messageSize: '20',
+                        message: msg,
+                        progressBarColor: '#01b6ad',
+                    });
+
+                }
+            }
+        }
+
+
+
+
+
+        var app = angular.module('myApp', []);
+        app.controller('myController', function ($scope, $http, $timeout) {
+            $scope.format = 'h:mm:ss sss';
+            $scope.ws_trade = undefined;
+            $scope.ws_match = undefined;
+            $scope.Trades = []; $scope.Matches = []; $scope.Stats = [];
+
+
+            if ("WebSocket" in window) {
+
+
+            } else {
+                // The browser doesn't support WebSocket
+                alert("WebSocket NOT supported by your Browser!");
+            }
+
+            $scope.SubTradeTicker = function () {
+                if ($scope.ws_trade != undefined) {
+                    $scope.ws_trade = undefined; $scope.Trades = [];
+                    return;
+                }
+                // Let us open a web socket
+                $scope.ws_trade = new WebSocket("ws://localhost:8088/MEWC_TradeTicker");
+
+                $scope.ws_trade.onopen = function () {
+                    $scope.Trades = [];
+                    // Web Socket is connected, send data using send()
+                    $scope.ws_trade.send("Message to send");
+                };
+
+                $scope.ws_trade.onmessage = function (evt) {
+                    let received_msg = evt.data;
+                    //console.log(received_msg);
+                    if (received_msg.startsWith('Status'))
+                        return;
+                    $scope.Trades.unshift(JSON.parse(received_msg));
+                    if ($scope.Trades.length > 10)
+                        $scope.Trades.pop();
+                };
+
+                $scope.ws_trade.onclose = function () {
+                    console.log("connection closed.");
+                    $scope.ws_trade = undefined;
+                };
+            }
+            $scope.SubTradeTicker();
+            $scope.SubMatchTicker = function () {
+                if ($scope.ws_match != undefined) {
+                    $scope.ws_match = undefined; $scope.Matches = [];
+                    return;
+                }
+                // Let us open a web socket
+                $scope.ws_match = new WebSocket("ws://localhost:8088/MEWC_MatchTicker");
+
+                $scope.ws_match.onopen = function () {
+                    $scope.Matches = [];
+                    // Web Socket is connected, send data using send()
+                    $scope.ws_match.send("Message to send");
+
+                };
+
+                $scope.ws_match.onmessage = function (evt) {
+                    let received_msg = evt.data;
+                    //console.log(received_msg);
+                    if (received_msg.startsWith('Status'))
+                        return;
+                    $scope.Matches.unshift(JSON.parse(received_msg));
+                    if ($scope.Matches.length > 10)
+                        $scope.Matches.pop();
+                };
+
+                $scope.ws_match.onclose = function () {
+                    console.log("connection closed.");
+                    $scope.ws_match = undefined;
+                };
+            }
+            $scope.SubMatchTicker();
+
+
+
+            $scope.StatsRefreshInterval = 5000; $scope.isStatsModalOpen = false;
+            $scope.TotalStats = { Submission: 0, Processed: 0, Trades: 0, Cancellation: 0, Book: 0, OpenOrders: 0, DustOrders: 0, TPS: 0 };
+            $scope.StatsTimeout;
+            $scope.GetStats = function (showModal = false) {
+                $http({
+                    method: "Get",
+                    url: "http://localhost:8080/Stats?Pair=",
+                    contentType: "application/json"
+
+                }).then(function (data) {
+                    if (data.data != null && data.data.status == "success") {
+                        $scope.TotalStats = { Submission: 0, Processed: 0, Trades: 0, Cancellation: 0, Book: 0, OpenOrders: 0, DustOrders: 0, TPS: 0 }
+                        $scope.Stats = data.data.data;
+                        angular.forEach($scope.Stats, function (item, index) {
+                            $scope.TotalStats.Submission += item.stat.submission;
+                            $scope.TotalStats.Processed += item.stat.processed;
+                            $scope.TotalStats.Trades += item.stat.trades;
+                            $scope.TotalStats.Cancellation += item.stat.cancellation;
+                            $scope.TotalStats.Book += item.stat.book;
+                            $scope.TotalStats.OpenOrders += item.stat.openOrders;
+                            $scope.TotalStats.DustOrders += item.stat.dustOrders;
+                            $scope.TotalStats.TPS += item.stat.tps;
+                        });
+                    }
+
+                    if (showModal) {
+                        $scope.isStatsModalOpen = true;
+                        openModal('ME_Stats_Modal');
+                    }
+                    if ($scope.isStatsModalOpen) {
+                        $scope.StatsTimeout = $timeout(function () { $scope.GetStats(false) }, $scope.StatsRefreshInterval);
+                    }
+
+                }, function (err) {
+                    ShowAlert("Error while fetching stats.", "error");
+                    console.log(err);
+                    if ($scope.isStatsModalOpen)
+                        $scope.StatsTimeout = $timeout(function () { $scope.GetStats(true) }, 2 * $scope.StatsRefreshInterval);
+                });
+            }
+            //$scope.GetStats();
+
+            $scope.closeStatsModal = function () {
+                // closeModal('ME_Stats_Modal');
+                $scope.StatsRefreshInterval = 5000;
+                $scope.isStatsModalOpen = false;
+                $timeout.cancel($scope.StatsTimeout);
+            }
+
+
+            $scope.openManageModal = function () {
+                $scope.closeStatsModal();
+                $scope.isStatsModalOpen = true;
+                $scope.GetStats(false);
+                openModal('ME_Manage_Modal');
+            };
+
+
+
+            $scope.ResetME = function (pair = "") {
+                $http({
+                    method: "Post",
+                    url: "http://localhost:8080/ResetME?pair=" + pair + "&remove=True",
+                    contentType: "application/json"
+                }).then(function (data) {
+                    if (data.data != null && data.data.status == "success") {
+                        $scope.Matches = []; $scope.Trades = [];
+                        console.log(data.data.data);
+                        $('#ME_Manage_Modal').modal('hide');
+                    }
+                }, function (err) {
+                    console.log(err);
+                });
+            }
+
+
+
+
+            $scope.PlaceOrder = function (numberOfOrders = 100, inParallel = false, isBulk = false, pair = '', interval = 0) {
+                $http({
+                    method: "Post",
+                    url: "http://localhost:8080/MeClient_OrderBot?numberOfOrders=" + numberOfOrders + "&inParallel=" + inParallel + "&isBulk=" + isBulk + "&interval=" + interval + "&pair=" + pair,
+                    contentType: "application/json"
+                }).then(function (data) {
+                    if (data.data != null && data.data.status == "success") {
+                        console.log(data.data.data);
+                        $('#ME_Manage_Modal').modal('hide');
+                    }
+                }, function (err) {
+                    console.log(err);
+                });
+            }
+
+
+
+
+            $scope.getEndpoints = function () {
+                $http({
+                    method: "Get",
+                    url: "http://localhost:8080/Endpoints",
+                    contentType: "application/json"
+                }).then(function (data) {
+                    if (data.data != null && data.data.status == "success") {
+                        $scope.Endpoints = data.data.data;
+                        console.log($scope.Endpoints);
+                        $('#ME_Endpoints_Modal').modal('show');
+                    }
+                }, function (err) {
+                    console.log(err);
+                });
+            }
+
+        });
+    </script>
+
+</body>
+
+</html>
