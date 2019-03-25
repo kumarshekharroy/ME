@@ -51,7 +51,7 @@ namespace ME
             catch (Exception ex)
             {
 
-
+                Console.WriteLine($"Exception => {ex.Message}");
             }
 
         }
@@ -120,7 +120,7 @@ namespace ME
             catch (Exception ex)
             {
 
-
+                Console.WriteLine($"Exception => {ex.Message}");
             }
 
         }

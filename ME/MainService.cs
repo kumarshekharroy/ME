@@ -21,14 +21,14 @@ namespace ME
         private readonly object sellLock = new object();
         private readonly object buyLock_stopLimit = new object();
         private readonly object sellLock_stopLimit = new object();
-       // private readonly WCTicker WCTicker_Instance= WCTicker.Instance;
+        // private readonly WCTicker WCTicker_Instance= WCTicker.Instance;
 
 
         public MainService(int Precision = 8, decimal DustSize = 0.000001M)
         {
             this.deciaml_precision = Precision;
             this.dust_size = DustSize;
-          
+
             Task.Run(() => MatchMyOrder_CornJob());
             Trades.ItemAdded += new Custom_ConcurrentQueue<Trade>.ItemAddedDelegate(newTradeNotification);
             MatchResponses.ItemAdded += new Custom_ConcurrentQueue<MatchResponse>.ItemAddedDelegate(newMatchResponsesNotification);
@@ -109,7 +109,7 @@ namespace ME
             });
             var NotificationTask = Task.Run(() =>
             {
-             WC_TradeTicker.PushTicker(trade.Pair, trade);
+                WC_TradeTicker.PushTicker(trade.Pair, trade);
             });
         }
         public void newMatchResponsesNotification(MatchResponse matchResponse)
@@ -277,7 +277,14 @@ namespace ME
                 {
 
                     if (PendingOrderQueue.TryDequeue(out order))
-                        MatchMyOrder(order);
+                        try
+                        {
+                            MatchMyOrder(order);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Exception => {ex.Message}");
+                        }
                 }
                 else
                     Task.Delay(100).Wait();
@@ -293,7 +300,7 @@ namespace ME
             var CurrentTime = DateTime.UtcNow;
             MatchResponse response = new MatchResponse
             {
-                Pair=order.Pair,
+                Pair = order.Pair,
                 UpdatedBuyOrders = new List<Order>(),
                 UpdatedSellOrders = new List<Order>(),
                 NewTrades = new List<Trade>()
@@ -618,8 +625,7 @@ namespace ME
 
             MatchResponses.Enqueue(response);
             this.statistic.inc_processed();
-            //stopwatch.Stop();
-            // Console.WriteLine(JsonConvert.SerializeObject(response, Formatting.Indented));
+            //stopwatch.Stop(); 
             // Console.WriteLine($"{order.ID} => {stopwatch.ElapsedMilliseconds}");
             return response;
         }
