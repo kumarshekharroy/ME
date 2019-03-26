@@ -59,7 +59,7 @@ namespace ME
         protected override void OnOpen()
         {
             Send("Status : Connecting"); 
-            var pair = Context.QueryString["pair"] ?? "All";
+            var pair = string.IsNullOrWhiteSpace(Context.QueryString["pair"]) ? "All": Context.QueryString["pair"];
             List<WebsocketUsersDetail> websocketUsersDetail;
             if (Pair_connectionIDS.TryGetValue(pair, out websocketUsersDetail))
                 websocketUsersDetail.Add(new WebsocketUsersDetail { ConnectionId = ID,  SessionStart = DateTime.UtcNow });
@@ -143,12 +143,8 @@ namespace ME
             {
                 var userConnDetail = users.Where(user => user.ConnectionId == ID).FirstOrDefault();
                 if (userConnDetail == null)
-                    return;
-
-                users.Remove(userConnDetail);
-                //userConnDetail.ConnectionStatus = false;
-                //userConnDetail.SessionEnd = DateTime.UtcNow;
-                // Send("Status : Dead");
+                    return; 
+                users.Remove(userConnDetail); 
             });
         }
         protected override void OnError(ErrorEventArgs e)

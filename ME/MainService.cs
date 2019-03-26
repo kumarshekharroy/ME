@@ -37,7 +37,7 @@ namespace ME
         //private static readonly Lazy<MainService> lazy = new Lazy<MainService>(() => new MainService()); 
         //public static MainService Instance { get { return lazy.Value; } }
 
-        private readonly ConcurrentQueue<Order> PendingOrderQueue = new ConcurrentQueue<Order>();
+        private readonly BlockingCollection<Order> PendingOrderQueue = new BlockingCollection<Order>();
 
         private readonly SortedDictionary<decimal, LinkedList<Order>> BuyOrdersDict = new SortedDictionary<decimal, LinkedList<Order>>();
         private readonly SortedDictionary<decimal, LinkedList<Order>> SellOrdersDict = new SortedDictionary<decimal, LinkedList<Order>>();
@@ -66,8 +66,9 @@ namespace ME
 
         public void newTradeNotification(Trade trade)
         {
-            var SellActivationTask = Task.Run(() =>
-            {
+            //var SellActivationTask = Task.Run(() =>
+            //{
+            if (trade.Side == OrderSide.Buy)
                 lock (sellLock_stopLimit)
                 {
                     var shouldContinue = false;
@@ -81,7 +82,7 @@ namespace ME
                         foreach (var order in StopLimit_SellOrdersDict[stopprice])
                         {
                             order.Type = OrderType.StopLimitToLimit;
-                            PendingOrderQueue.Enqueue(order);
+                            PendingOrderQueue.Add(order);
                         }
 
                         StopLimit_SellOrdersDict.Remove(stopprice);
@@ -89,9 +90,10 @@ namespace ME
                     } while (shouldContinue);
                 }
 
-            });
-            var BuyActivationTask = Task.Run(() =>
-            {
+            //});
+            //var BuyActivationTask = Task.Run(() =>
+            //{
+            else if (trade.Side == OrderSide.Sell)
                 lock (buyLock_stopLimit)
                 {
                     var shouldContinue = false;
@@ -104,7 +106,7 @@ namespace ME
                         foreach (var order in StopLimit_BuyOrdersDict[stopprice])
                         {
                             order.Type = OrderType.StopLimitToLimit;
-                            PendingOrderQueue.Enqueue(order);
+                            PendingOrderQueue.Add(order);
                         }
 
                         StopLimit_BuyOrdersDict.Remove(stopprice);
@@ -113,7 +115,7 @@ namespace ME
                     } while (shouldContinue);
 
                 }
-            });
+            //});
             var NotificationTask = Task.Run(() =>
             {
                 WC_TradeTicker.PushTicker(trade.Pair, trade);
@@ -152,7 +154,7 @@ namespace ME
                 return this.BuyOrdersDict.Count + this.SellOrdersDict.Count;
             }
         }
-        public ConcurrentQueue<Order> AllPendingOrderQueue
+        public BlockingCollection<Order> AllPendingOrderQueue
         {
             get
             {
@@ -219,7 +221,7 @@ namespace ME
                 if ((order.Side == OrderSide.Sell && order.Stop >= current_Market_Price) || (order.Side == OrderSide.Buy && order.Stop <= current_Market_Price))
                 {
                     order.Type = OrderType.Limit;
-                    PendingOrderQueue.Enqueue(order);
+                    PendingOrderQueue.Add(order);
                 }
                 else
                 {
@@ -243,14 +245,14 @@ namespace ME
                             if (StopLimit_SellOrdersDict.TryGetValue(order.Stop, out orderList))
                                 orderList.AddLast(order);
                             else
-                                StopLimit_SellOrdersDict[order.Stop] = new LinkedList<Order>(new List<Order> { order }); 
+                                StopLimit_SellOrdersDict[order.Stop] = new LinkedList<Order>(new List<Order> { order });
                         }
-                    } 
+                    }
                 }
             }
             else
             {
-                PendingOrderQueue.Enqueue(order);
+                PendingOrderQueue.Add(order);
             }
 
             this.statistic.inc_submission();
@@ -267,7 +269,7 @@ namespace ME
             }
 
             order.Status = OrderStatus.CancellationPending;
-            PendingOrderQueue.Enqueue(order);
+            PendingOrderQueue.Add(order);
             this.statistic.inc_cancellation();
             return order;
         }
@@ -280,23 +282,35 @@ namespace ME
         public void MatchMyOrder_CornJob()
         {
             Order order;
-            while (true)
-            {
-                if (!PendingOrderQueue.IsEmpty)
-                {
+            //while (true)
+            //{
+            //    if (!PendingOrderQueue.IsEmpty)
+            //    {
 
-                    if (PendingOrderQueue.TryDequeue(out order))
-                        try
-                        {
-                            MatchMyOrder(order);
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Exception => {ex.Message}");
-                        }
-                }
-                else
-                    Task.Delay(100).Wait();
+            //        if (PendingOrderQueue.TryDequeue(out order))
+            //            try
+            //            {
+            //                MatchMyOrder(order);
+            //            }
+            //            catch (Exception ex)
+            //            {
+            //                Console.WriteLine($"Exception => {ex.Message}");
+            //            }
+            //    }
+            //    else
+            //        Task.Delay(100).Wait();
+            //}
+            while (!PendingOrderQueue.IsCompleted)
+            {
+                if (PendingOrderQueue.TryTake(out order, timeout: TimeSpan.FromMilliseconds(10000)))
+                    try
+                    {
+                        MatchMyOrder(order);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Exception => {ex.Message}");
+                    }
             }
 
         }

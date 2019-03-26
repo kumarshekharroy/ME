@@ -16,7 +16,7 @@ namespace ME.Utility
         private static int deciaml_precision = 4;
         private static readonly string endpoint_SingleOrder = "http://localhost:8080/PlaceOrder";
         private static readonly string endpoint_BulkOrder = "http://localhost:8080/PlaceBulkOrders";
-        private static List<string> pairs = new List<string> { "ETH-BTC", "XRP-BTC", "LTC-BTC", "XRP-ETH", "USDT-BTC", "USDT-ETH" };
+        private static List<string> pairs = new List<string> { "ETH-BTC", "XRP-BTC", "LTC-BTC", "XRP-ETH", "USDT-BTC", "USDT-ETH","ETH-USD","OMG-USD","BTC-USD","XRP-USD" };
 
         private static decimal RandomDecimalBetween(decimal minValue, decimal maxValue)
         {

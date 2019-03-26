@@ -160,19 +160,19 @@
                         <h4 class="modal-title">Matching Engine Live Statistics</h4>
                         <button type="button" class="close" ng-click="closeStatsModal()" data-dismiss="modal">&times;</button>
                     </div>  <div class="modal-body">
-                                <div class="row">
-                                    <div class="col-sm-4">
-                                        <div class="form-group">
-                                            <label for="numberOfOrders" class="mb-2 mr-sm-2">Refresh Interval ( MilliSeconds ):</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-4">
-                                        <div class="form-group">
-                                            <input class="form-control" type="number" id="RefreshInterval" ng-model="StatsRefreshInterval" max="1000000" />
-                                        </div>
-                                    </div>
-
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label for="numberOfOrders" class="mb-2 mr-sm-2">Refresh Interval ( MilliSeconds ):</label>
                                 </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="form-group">
+                                    <input class="form-control" type="number" id="RefreshInterval" ng-model="StatsRefreshInterval" max="1000000" />
+                                </div>
+                            </div>
+
+                        </div>
                         <table class="table table-bordered">
                             <thead>
                                 <tr>
@@ -273,26 +273,26 @@
                             <div class="col-sm-6">
                                 <div class="form-group">
                                     <label for="numberOfOrders" class="mb-2 mr-sm-2">Number Of Orders:</label>
-                                    <input class="form-control" type="number" id="numberOfOrders" ng-model="numberOfOrders" max="1000000" />
+                                    <input class="form-control" type="number" id="numberOfOrders" ng-disabled="isOrderIsBeingPlaced" ng-model="numberOfOrders" max="1000000" />
                                 </div>
                                 <div class="form-group">
                                     <label for="inParallel" class="mb-2 mr-sm-2">In Parallel:</label>
-                                    <input class="form-control" type="checkbox" id="inParallel" ng-model="inParallel">
+                                    <input class="form-control" type="checkbox" id="inParallel"  ng-disabled="isOrderIsBeingPlaced" ng-model="inParallel">
                                 </div>
                                 <div class="form-group">
                                     <label for="isBulk" class="mb-2 mr-sm-2">Bulk Mode:</label>
-                                    <input class="form-control" type="checkbox" id="isBulk" ng-model="isBulk">
+                                    <input class="form-control" type="checkbox" id="isBulk"  ng-disabled="isOrderIsBeingPlaced" ng-model="isBulk">
                                 </div>
                                 <div class="form-group">
                                     <label for="interval" class="mb-2 mr-sm-2">interval:</label>
-                                    <input class="form-control" type="number" id="interval" ng-disabled="inParallel || isBulk" ng-model="interval" max="100000" />
+                                    <input class="form-control" type="number" id="interval" ng-disabled="inParallel || isBulk || isOrderIsBeingPlaced" ng-model="interval" max="100000" />
                                 </div>
                                 <div class="form-group">
                                     <label for="pair_" class="mb-2 mr-sm-2">pair:</label>
-                                    <input class="form-control" type="text" id="pair_" ng-disabled="!isBulk" ng-model="pair" value="ETH_USDT" />
+                                    <input class="form-control" type="text" id="pair_" ng-disabled="!isBulk || isOrderIsBeingPlaced" ng-model="pair" value="ETH_USDT" />
                                 </div>
                                 <div class="form-group text-center">
-                                    <button id="placeOrder" type="button" class="btn btn-sm btn-success" ng-disabled="numberOfOrders<=0 || (isBulk && (!pair || pair.trim()== ''))" ng-click="PlaceOrder(numberOfOrders,inParallel,isBulk,pair,interval)">Place Order</button>
+                                    <button id="placeOrder" type="button" class="btn btn-sm btn-success" ng-disabled="numberOfOrders<=0 || (isBulk && (!pair || pair.trim()== '')) || isOrderIsBeingPlaced" ng-click="PlaceOrder(numberOfOrders,inParallel,isBulk,pair,interval)">Place Order</button>
                                 </div>
                             </div>
                             <div class="col-sm-6">
@@ -394,7 +394,6 @@
                         message: msg,
                         progressBarColor: '#01b6ad',
                     });
-
                 }
             }
         }
@@ -425,7 +424,7 @@
                     return;
                 }
                 // Let us open a web socket
-                $scope.ws_trade = new WebSocket("ws://localhost:8088/MEWC_TradeTicker");
+                $scope.ws_trade = new WebSocket("ws://localhost:8088/MEWC_TradeTicker?pair=");
 
                 $scope.ws_trade.onopen = function () {
                     $scope.Trades = [];
@@ -455,7 +454,7 @@
                     return;
                 }
                 // Let us open a web socket
-                $scope.ws_match = new WebSocket("ws://localhost:8088/MEWC_MatchTicker");
+                $scope.ws_match = new WebSocket("ws://localhost:8088/MEWC_MatchTicker?pair=");
 
                 $scope.ws_match.onopen = function () {
                     $scope.Matches = [];
@@ -560,20 +559,23 @@
 
 
 
-
+            $scope.isOrderIsBeingPlaced = false;
             $scope.PlaceOrder = function (numberOfOrders = 100, inParallel = false, isBulk = false, pair = '', interval = 0) {
+                $scope.isOrderIsBeingPlaced = true;
                 $http({
                     method: "Post",
                     url: "http://localhost:8080/MeClient_OrderBot?numberOfOrders=" + numberOfOrders + "&inParallel=" + inParallel + "&isBulk=" + isBulk + "&interval=" + interval + "&pair=" + pair,
                     contentType: "application/json"
                 }).then(function (data) {
                     if (data.data != null && data.data.status == "success") {
-                        console.log(data.data.data);
-                        $('#ME_Manage_Modal').modal('hide');
+                        console.log(data.data.data); 
                     }
+                    $scope.isOrderIsBeingPlaced = false;
                 }, function (err) {
                     console.log(err);
+                    $scope.isOrderIsBeingPlaced = false;
                 });
+                $('#ME_Manage_Modal').modal('hide');
             }
 
 
