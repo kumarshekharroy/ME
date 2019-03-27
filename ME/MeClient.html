@@ -430,6 +430,7 @@
                     $scope.Trades = [];
                     // Web Socket is connected, send data using send()
                     $scope.ws_trade.send("Message to send");
+                    $scope.$apply();
                 };
 
                 $scope.ws_trade.onmessage = function (evt) {
@@ -440,11 +441,13 @@
                     $scope.Trades.unshift(JSON.parse(received_msg));
                     if ($scope.Trades.length > 10)
                         $scope.Trades.pop();
+                    $scope.$apply();
                 };
 
                 $scope.ws_trade.onclose = function () {
                     console.log("connection closed.");
                     $scope.ws_trade = undefined;
+                    $scope.$apply();
                 };
             }
             $scope.SubTradeTicker();
@@ -460,6 +463,7 @@
                     $scope.Matches = [];
                     // Web Socket is connected, send data using send()
                     $scope.ws_match.send("Message to send");
+                    $scope.$apply();
 
                 };
 
@@ -471,11 +475,13 @@
                     $scope.Matches.unshift(JSON.parse(received_msg));
                     if ($scope.Matches.length > 10)
                         $scope.Matches.pop();
+                    $scope.$apply();
                 };
 
                 $scope.ws_match.onclose = function () {
                     console.log("connection closed.");
                     $scope.ws_match = undefined;
+                    $scope.$apply();
                 };
             }
             $scope.SubMatchTicker();
@@ -508,8 +514,8 @@
                     }
 
                     if (showModal) {
-                        $scope.isStatsModalOpen = true;
                         openModal('ME_Stats_Modal');
+                        $scope.isStatsModalOpen = true;
                     }
                     if ($scope.isStatsModalOpen) {
                         $scope.StatsTimeout = $timeout(function () { $scope.GetStats(false) }, $scope.StatsRefreshInterval);
@@ -526,7 +532,7 @@
 
             $scope.closeStatsModal = function () {
                 // closeModal('ME_Stats_Modal');
-                $scope.StatsRefreshInterval = 5000;
+               // $scope.StatsRefreshInterval = 5000;
                 $scope.isStatsModalOpen = false;
                 $timeout.cancel($scope.StatsTimeout);
             }

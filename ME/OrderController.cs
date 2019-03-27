@@ -118,8 +118,9 @@ namespace ME
         } 
         [HttpPost]
         [Route("~/MeClient_OrderBot")]
-        public Response<object> MeClient_OrderBot(int numberOfOrders = 100, bool inParallel = false, bool isBulk = false,string pair="", int interval = 0)
+        public Response<object> MeClient_OrderBot(int numberOfOrders = 100, bool inParallel = false, bool isBulk = false,string pair= "", int interval = 0)
         {
+            //pair = "ETH-BTC";
             Me_Client.PlaceAllOrder(Me_Client.getRandomOrders(numberOfOrders, pair), inParallel, isBulk, interval);
             return new Response<object> { status = "success", message = "ok", data = "success" };
         }

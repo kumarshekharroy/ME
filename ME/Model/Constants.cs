@@ -14,9 +14,9 @@ namespace ME.Model
     {
         Limit = 1,
         StopLimit = 2,
-        //Market = 3,
-        //StopMarket = 4,
-        StopLimitToLimit=5,
+        Market = 3,
+        StopMarket = 4,
+        //StopLimitToLimit=5,
     }
 
     public enum OrderStatus
@@ -28,7 +28,15 @@ namespace ME.Model
         Rejected = 5,
         CancellationPending = 6,
         CancellationAccepted = 7,
-        CancellationRejected = 8
+        CancellationRejected = 8,
+    }
+
+    public enum OrderTimeInForce
+    {
+        GTC = 0,
+        DO = 1,
+        IOC = 2,
+        FOK = 3, 
     }
 
     public static class EnumHelper

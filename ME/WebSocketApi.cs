@@ -16,10 +16,8 @@ namespace ME
 
     public class WebsocketUsersDetail
     {
-        public string ConnectionId { get; set; }
-       /// public bool ConnectionStatus { get; set; }
-        public DateTime SessionStart { get; set; }
-       // public DateTime SessionEnd { get; set; }
+        public string ConnectionId { get; set; } 
+        public DateTime SessionStart { get; set; } 
     }
 
 
@@ -43,7 +41,9 @@ namespace ME
                 {
                     Parallel.ForEach(Pair_connectionIDS[key], (userConnDetail) =>
                     {
-                        Program.wssv.WebSocketServices["/MEWC_MatchTicker"].Sessions.SendToAsync(payload, userConnDetail.ConnectionId, (isSent) => { if (!isSent) throw new MissingMemberException(); });
+                        Program.wssv.WebSocketServices["/MEWC_MatchTicker"].Sessions.SendToAsync(payload, userConnDetail.ConnectionId, (isSent) => {
+                            //if (!isSent) throw new MissingMemberException();
+                        });
                     });
                 });
 
@@ -74,10 +74,7 @@ namespace ME
                 var userConnDetail = users.Where(user => user.ConnectionId == ID).FirstOrDefault();
                 if (userConnDetail == null)
                     return;
-                users.Remove(userConnDetail);
-                //userConnDetail.ConnectionStatus = false;
-                //userConnDetail.SessionEnd = DateTime.UtcNow;
-               // Send("Status : Dead");
+                users.Remove(userConnDetail); 
             });
         }
         protected override void OnError(ErrorEventArgs e)
@@ -112,7 +109,9 @@ namespace ME
                 {
                     Parallel.ForEach(Pair_connectionIDS[key], (userConnDetail) =>
                     {
-                        Program.wssv.WebSocketServices["/MEWC_TradeTicker"].Sessions.SendToAsync(payload, userConnDetail.ConnectionId, (isSent) => { if (!isSent) throw new MissingMemberException(); });
+                        Program.wssv.WebSocketServices["/MEWC_TradeTicker"].Sessions.SendToAsync(payload, userConnDetail.ConnectionId, (isSent) => {
+                            //if (!isSent) throw new MissingMemberException();
+                        });
                     });
                 });
 
@@ -128,7 +127,7 @@ namespace ME
         protected override void OnOpen()
         {
             Send("Status : Connecting");
-            var pair = Context.QueryString["pair"] ?? "All";
+            var pair = string.IsNullOrWhiteSpace(Context.QueryString["pair"]) ? "All" : Context.QueryString["pair"];
             List<WebsocketUsersDetail> websocketUsersDetail;
             if (Pair_connectionIDS.TryGetValue(pair, out websocketUsersDetail))
                 websocketUsersDetail.Add(new WebsocketUsersDetail { ConnectionId = ID,   SessionStart = DateTime.UtcNow });

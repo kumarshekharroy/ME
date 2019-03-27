@@ -19,19 +19,24 @@ namespace ME
         private decimal current_Market_Price = 0M;
         private readonly object buyLock = new object();
         private readonly object sellLock = new object();
-        private readonly object buyLock_stopLimit = new object();
-        private readonly object sellLock_stopLimit = new object();
+        private readonly object buyLock_stop = new object();
+        private readonly object sellLock_stop = new object();
         // private readonly WCTicker WCTicker_Instance= WCTicker.Instance;
 
-
+        private System.Threading.Timer my12AmTimer = null;
         public MainService(int Precision = 8, decimal DustSize = 0.000001M)
         {
             this.deciaml_precision = Precision;
             this.dust_size = DustSize;
 
-            Task.Run(() => MatchMyOrder_CornJob());
+            var CurrentTime = DateTime.UtcNow;
+            var DueDay = DateTime.UtcNow <= DateTime.UtcNow.Date ? DateTime.UtcNow.Date : DateTime.UtcNow.Date.AddDays(1);
+            my12AmTimer = new Timer(_ => CancelAll_DO_Orders(), null, TimeSpan.FromMilliseconds((DueDay -CurrentTime).TotalMilliseconds), TimeSpan.FromDays(1)); //every day
+
             Trades.ItemAdded += new Custom_ConcurrentQueue<Trade>.ItemAddedDelegate(newTradeNotification);
             MatchResponses.ItemAdded += new Custom_ConcurrentQueue<MatchResponse>.ItemAddedDelegate(newMatchResponsesNotification);
+
+            Task.Run(() => MatchMyOrder_CornJob());
         }
 
         //private static readonly Lazy<MainService> lazy = new Lazy<MainService>(() => new MainService()); 
@@ -43,8 +48,8 @@ namespace ME
         private readonly SortedDictionary<decimal, LinkedList<Order>> SellOrdersDict = new SortedDictionary<decimal, LinkedList<Order>>();
 
 
-        private readonly SortedDictionary<decimal, LinkedList<Order>> StopLimit_BuyOrdersDict = new SortedDictionary<decimal, LinkedList<Order>>();
-        private readonly SortedDictionary<decimal, LinkedList<Order>> StopLimit_SellOrdersDict = new SortedDictionary<decimal, LinkedList<Order>>();
+        private readonly SortedDictionary<decimal, LinkedList<Order>> Stop_BuyOrdersDict = new SortedDictionary<decimal, LinkedList<Order>>();
+        private readonly SortedDictionary<decimal, LinkedList<Order>> Stop_SellOrdersDict = new SortedDictionary<decimal, LinkedList<Order>>();
 
 
         private readonly Custom_ConcurrentQueue<Trade> Trades = new Custom_ConcurrentQueue<Trade>();
@@ -52,40 +57,81 @@ namespace ME
         private readonly Statistic statistic = new Statistic();
 
 
+        private void CancelAll_DO_Orders()
+        {
+            my12AmTimer.Change(Timeout.Infinite, Timeout.Infinite); //stops the timer
+
+            //Cancel All Buy
+            Task.Run(() =>
+            {
+                this.BuyOrdersDict.Values.SelectMany(x => x.Where(y => y.TimeInForce == OrderTimeInForce.DO)).ToList().AsParallel().ForAll(order =>
+                {
+                    CancelMyOrder(order);
+                });
+                this.Stop_BuyOrdersDict.Values.SelectMany(x => x.Where(y => y.TimeInForce == OrderTimeInForce.DO)).ToList().AsParallel().ForAll(order =>
+                {
+                    CancelMyOrder(order);
+                });
+
+            });
 
 
-        public long getOrderID()
+
+            //Cancel All Sell
+            Task.Run(() =>
+            {
+                this.SellOrdersDict.Values.SelectMany(x => x.Where(y => y.TimeInForce == OrderTimeInForce.DO)).ToList().AsParallel().ForAll(order =>
+                {
+                    CancelMyOrder(order);
+                });
+                this.Stop_SellOrdersDict.Values.SelectMany(x => x.Where(y => y.TimeInForce == OrderTimeInForce.DO)).ToList().AsParallel().ForAll(order =>
+                {
+                    CancelMyOrder(order);
+                });
+
+            });
+
+            //restarts the timer
+            var CurrentTime = DateTime.UtcNow;
+            var DueDay = DateTime.UtcNow <= DateTime.UtcNow.Date ? DateTime.UtcNow.Date : DateTime.UtcNow.Date.AddDays(1);
+            my12AmTimer.Change(TimeSpan.FromMilliseconds((DueDay - CurrentTime).TotalMilliseconds), TimeSpan.FromDays(1));
+
+        }
+
+
+        private long getOrderID()
         {
             return Interlocked.Increment(ref ME_Gateway.Instance.OrderID);
         }
-        public long getTradeID()
+        private long getTradeID()
         {
             return Interlocked.Increment(ref ME_Gateway.Instance.TradeID);
         }
 
 
-        public void newTradeNotification(Trade trade)
+        private void newTradeNotification(Trade trade)
         {
             //var SellActivationTask = Task.Run(() =>
             //{
             if (trade.Side == OrderSide.Buy)
-                lock (sellLock_stopLimit)
+                lock (sellLock_stop)
                 {
                     var shouldContinue = false;
                     do
                     {
 
-                        var stopprice = StopLimit_SellOrdersDict.Keys.Reverse().FirstOrDefault();
+                        var stopprice = Stop_SellOrdersDict.Keys.Reverse().FirstOrDefault();
                         if (stopprice < trade.Rate)
-                            break;  //Break as No StopLimitSell Order above Current Trading price;
+                            break;  //Break as No StopSell Order above Current Trading price;
 
-                        foreach (var order in StopLimit_SellOrdersDict[stopprice])
+                        foreach (var order in Stop_SellOrdersDict[stopprice])
                         {
-                            order.Type = OrderType.StopLimitToLimit;
+                            order.Type = order.Type == OrderType.StopLimit ? OrderType.Limit : OrderType.Market;
+                            order.IsStopActivated = true;
                             PendingOrderQueue.Add(order);
                         }
 
-                        StopLimit_SellOrdersDict.Remove(stopprice);
+                        Stop_SellOrdersDict.Remove(stopprice);
                         shouldContinue = true;
                     } while (shouldContinue);
                 }
@@ -94,38 +140,41 @@ namespace ME
             //var BuyActivationTask = Task.Run(() =>
             //{
             else if (trade.Side == OrderSide.Sell)
-                lock (buyLock_stopLimit)
+                lock (buyLock_stop)
                 {
                     var shouldContinue = false;
                     do
                     {
-                        var stopprice = StopLimit_BuyOrdersDict.Keys.FirstOrDefault();
+                        var stopprice = Stop_BuyOrdersDict.Keys.FirstOrDefault();
                         if (stopprice == 0 || stopprice > trade.Rate)
                             break;  //Break as No StopLimitBuy Order below Current Trading price;
 
-                        foreach (var order in StopLimit_BuyOrdersDict[stopprice])
+                        foreach (var order in Stop_BuyOrdersDict[stopprice])
                         {
-                            order.Type = OrderType.StopLimitToLimit;
+                            order.Type = order.Type == OrderType.StopLimit ? OrderType.Limit : OrderType.Market;
+                            order.IsStopActivated = true;
                             PendingOrderQueue.Add(order);
                         }
 
-                        StopLimit_BuyOrdersDict.Remove(stopprice);
+                        Stop_BuyOrdersDict.Remove(stopprice);
 
                         shouldContinue = true;
                     } while (shouldContinue);
 
                 }
             //});
-            var NotificationTask = Task.Run(() =>
-            {
-                WC_TradeTicker.PushTicker(trade.Pair, trade);
-            });
+            ME_Gateway.Instance.TradeQueue.Add(trade);
+            //var NotificationTask = Task.Run(() =>
+            //{
+            //    WC_TradeTicker.PushTicker(trade.Pair, trade);
+            //});
         }
-        public void newMatchResponsesNotification(MatchResponse matchResponse)
+        private void newMatchResponsesNotification(MatchResponse matchResponse)
         {
             //send push Notification using socket;
-            WC_MatchTicker.PushTicker(matchResponse.Pair, matchResponse);
+            //WC_MatchTicker.PushTicker(matchResponse.Pair, matchResponse);
 
+            ME_Gateway.Instance.MatchResponseQueue.Add(matchResponse);
         }
 
 
@@ -227,25 +276,25 @@ namespace ME
                 {
                     if (order.Side == OrderSide.Buy)
                     {
-                        lock (buyLock_stopLimit)
+                        lock (buyLock_stop)
                         {
                             LinkedList<Order> orderList;
-                            if (StopLimit_BuyOrdersDict.TryGetValue(order.Stop, out orderList))
+                            if (Stop_BuyOrdersDict.TryGetValue(order.Stop, out orderList))
                                 orderList.AddLast(order);
                             else
-                                StopLimit_BuyOrdersDict[order.Stop] = new LinkedList<Order>(new List<Order> { order });
+                                Stop_BuyOrdersDict[order.Stop] = new LinkedList<Order>(new List<Order> { order });
                         }
 
                     }
                     else if (order.Side == OrderSide.Sell)
                     {
-                        lock (sellLock_stopLimit)
+                        lock (sellLock_stop)
                         {
                             LinkedList<Order> orderList;
-                            if (StopLimit_SellOrdersDict.TryGetValue(order.Stop, out orderList))
+                            if (Stop_SellOrdersDict.TryGetValue(order.Stop, out orderList))
                                 orderList.AddLast(order);
                             else
-                                StopLimit_SellOrdersDict[order.Stop] = new LinkedList<Order>(new List<Order> { order });
+                                Stop_SellOrdersDict[order.Stop] = new LinkedList<Order>(new List<Order> { order });
                         }
                     }
                 }
@@ -314,7 +363,7 @@ namespace ME
             }
 
         }
-
+        //Stop Orders(STOP LIMIT, STOP MARKET) Never Comes directly here.
         //Self match allowed
         public MatchResponse MatchMyOrder(Order order)
         {
@@ -332,7 +381,7 @@ namespace ME
 
             if (order.Side == OrderSide.Buy)
             {
-                //Cancellation Reqest 
+                //Cancellation Request 
                 if (order.Status == OrderStatus.CancellationPending && order.ID != 0)
                 {
                     bool isfound = false;
@@ -358,16 +407,16 @@ namespace ME
                         }
                     });
                     if (!isfound)
-                        Parallel.ForEach(StopLimit_BuyOrdersDict.Values, (gropued_list, loopState) =>
+                        Parallel.ForEach(Stop_BuyOrdersDict.Values, (gropued_list, loopState) =>
                         {
                             var orderToBeCancelled = gropued_list.FirstOrDefault(x => x.ID == order.ID);
                             if (orderToBeCancelled != null)
                             {
                                 loopState.Break();
-                                lock (buyLock_stopLimit)
+                                lock (buyLock_stop)
                                 {
                                     if (gropued_list.Count <= 1)
-                                        StopLimit_BuyOrdersDict.Remove(orderToBeCancelled.Stop);
+                                        Stop_BuyOrdersDict.Remove(orderToBeCancelled.Stop);
                                     else
                                         gropued_list.Remove(orderToBeCancelled);
                                 }
@@ -383,10 +432,14 @@ namespace ME
                     while (order.PendingVolume > 0 && SellOrdersDict.Count > 0)
                     {
                         var PossibleMatches_ = SellOrdersDict.FirstOrDefault();
-                        if (PossibleMatches_.Key > order.Rate)
+                        if (PossibleMatches_.Key > order.Rate && order.Type != OrderType.Market)
                             break;  //Break as No Match Found for New
 
+                        if (order.TimeInForce == OrderTimeInForce.FOK && PossibleMatches_.Value.Sum(x => x.PendingVolume) < order.PendingVolume)
+                            break;
+
                         var sellOrder_Node = PossibleMatches_.Value.First;
+
                         while (sellOrder_Node != null)
                         {
                             var next_Node = sellOrder_Node.Next;
@@ -472,16 +525,31 @@ namespace ME
 
                         }
                     }
-                    //lock (buyLock)
                     if (!EnumHelper.getOrderStatusBool(order.Status))
                     {
-                        LinkedList<Order> orderList;
-                        if (BuyOrdersDict.TryGetValue(order.Rate, out orderList))
-                            lock (buyLock)
-                                orderList.AddLast(order);
+
+                        if (order.Type == OrderType.Market)
+                        {
+                            order.Status = OrderStatus.Rejected;//Rejected or Cencelled
+                            response.UpdatedBuyOrders.Add(order);
+                        }
+                        else if(order.TimeInForce==OrderTimeInForce.IOC || order.TimeInForce == OrderTimeInForce.FOK)
+                        {
+                            order.Status = OrderStatus.CancellationAccepted;
+                            response.UpdatedBuyOrders.Add(order);
+                        }
                         else
-                            lock (buyLock)
-                                BuyOrdersDict[order.Rate] = new LinkedList<Order>(new List<Order> { order });
+                        {
+                            //lock (buyLock)
+                            LinkedList<Order> orderList;
+                            if (BuyOrdersDict.TryGetValue(order.Rate, out orderList))
+                                lock (buyLock)
+                                    orderList.AddLast(order);
+                            else
+                                lock (buyLock)
+                                    BuyOrdersDict[order.Rate] = new LinkedList<Order>(new List<Order> { order });
+                        }
+
                     }
                 }
             }
@@ -513,7 +581,7 @@ namespace ME
                         }
                     });
                     if (!isfound)
-                        Parallel.ForEach(StopLimit_SellOrdersDict.Values, (gropued_list, loopState) =>
+                        Parallel.ForEach(Stop_SellOrdersDict.Values, (gropued_list, loopState) =>
                           {
                               var orderToBeCancelled = gropued_list.FirstOrDefault(x => x.ID == order.ID);
                               if (orderToBeCancelled != null)
@@ -521,10 +589,10 @@ namespace ME
                                   isfound = true;
                                   loopState.Break();
 
-                                  lock (sellLock_stopLimit)
+                                  lock (sellLock_stop)
                                   {
                                       if (gropued_list.Count <= 1)
-                                          StopLimit_SellOrdersDict.Remove(orderToBeCancelled.Stop);
+                                          Stop_SellOrdersDict.Remove(orderToBeCancelled.Stop);
                                       else
                                           gropued_list.Remove(orderToBeCancelled);
                                   }
@@ -542,8 +610,11 @@ namespace ME
                     while (order.PendingVolume > 0 && BuyOrdersDict.Count > 0)
                     {
                         var PossibleMatches_ = BuyOrdersDict.Reverse().FirstOrDefault();
-                        if (PossibleMatches_.Key < order.Rate)
+                        if (PossibleMatches_.Key < order.Rate && order.Type != OrderType.Market)
                             break;  //Break as No Match Found for New
+
+                        if (order.TimeInForce == OrderTimeInForce.FOK && PossibleMatches_.Value.Sum(x => x.PendingVolume) < order.PendingVolume)
+                            break;
 
                         var buyOrder_Node = PossibleMatches_.Value.First;
                         while (buyOrder_Node != null)
@@ -632,16 +703,29 @@ namespace ME
                             buyOrder_Node = next_Node;
                         }
                     }
-                    //lock (sellLock)
                     if (!EnumHelper.getOrderStatusBool(order.Status))
                     {
-                        LinkedList<Order> orderList;
-                        if (SellOrdersDict.TryGetValue(order.Rate, out orderList))
-                            lock (sellLock)
-                                orderList.AddLast(order);
+                        if (order.Type == OrderType.Market)
+                        {
+                            order.Status = OrderStatus.Rejected;//Rejected or Cencelled
+                            response.UpdatedSellOrders.Add(order);
+                        }
+                        else if (order.TimeInForce == OrderTimeInForce.IOC || order.TimeInForce == OrderTimeInForce.FOK)
+                        {
+                            order.Status = OrderStatus.CancellationAccepted;
+                            response.UpdatedSellOrders.Add(order);
+                        }
                         else
-                            lock (sellLock)
-                                SellOrdersDict[order.Rate] = new LinkedList<Order>(new List<Order> { order });
+                        {
+                            //lock (sellLock)
+                            LinkedList<Order> orderList;
+                            if (SellOrdersDict.TryGetValue(order.Rate, out orderList))
+                                lock (sellLock)
+                                    orderList.AddLast(order);
+                            else
+                                lock (sellLock)
+                                    SellOrdersDict[order.Rate] = new LinkedList<Order>(new List<Order> { order });
+                        }
                     }
                 }
             }
@@ -649,7 +733,7 @@ namespace ME
             MatchResponses.Enqueue(response);
             this.statistic.inc_processed();
             //stopwatch.Stop(); 
-            // Console.WriteLine($"{order.ID} => {stopwatch.ElapsedMilliseconds}");
+            //Console.WriteLine($"{order.ID} => {stopwatch.ElapsedTicks}");
             return response;
         }
 

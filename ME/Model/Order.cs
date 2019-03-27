@@ -14,10 +14,12 @@ namespace ME.Model
         public decimal Volume { get; set; }
         public decimal Rate { get; set; }
         public decimal Stop { get; set; }
+        public bool IsStopActivated { get; set; }
         public decimal PendingVolume { get; set; }
         public DateTime AcceptedOn { get; set; }
         public DateTime ModifiedOn { get; set; }
         public OrderStatus Status { get; set; }
+        public OrderTimeInForce TimeInForce { get; set; }
 
         public object Clone()
         {

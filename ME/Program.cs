@@ -20,7 +20,7 @@ namespace ME
             {
                 Console.WriteLine($"Web Server is running at : {url}.");
 
-
+               var MeInstance= ME_Gateway.Instance;
                 StartWCServer();
                 //Me_Client.PlaceAllOrder(Me_Client.getRandomOrders(200000), true,false);
 
