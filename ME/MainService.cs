@@ -185,6 +185,7 @@ namespace ME
             {
                 this.statistic.OpenOrders = this.OpenOrdersCount;
                 this.statistic.Book = this.BookCount;
+                this.statistic.CurrentMarketPrice = current_Market_Price;
                 this.statistic.TPS = (int)((this.statistic.Submission + this.statistic.Trades + this.statistic.Cancellation) / (DateTime.UtcNow - this.statistic.InitTime).TotalSeconds);
                 return this.statistic;
             }

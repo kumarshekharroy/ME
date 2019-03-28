@@ -28,7 +28,8 @@ namespace ME.Model
         //public int TotalTxns { get; set; }
         //public int TxnsPerSec { get; set; } 
         public int TPS { get; set; }
-        public DateTime InitTime { get; set; }
+        public DateTime InitTime { get; set; } 
+        public decimal CurrentMarketPrice { get; set; }
         public void inc_submission()
         {
             //lock (submission_lock)

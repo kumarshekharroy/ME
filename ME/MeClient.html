@@ -23,6 +23,84 @@
         <button type="button" class="btn btn-info btn-lg" ng-click="openManageModal()">Manage</button>
         <button type="button" class="btn btn-info btn-lg" ng-click="getEndpoints()">Endpoints</button>
 
+
+        <div class="col-sm-12" ng-cloak ng-show="Stats">
+            <br />
+            <hr />
+            <br />
+            <div class="col-sm-4">
+                <h2 class="text-center">Market Pairs</h2>
+            </div>
+            <div class="col-sm-6">
+                <div class="form-group">
+                    <label for="RefreshInterval">Market Refresh Interval:</label>
+                    <input class="form-control" type="number" id="RefreshInterval" ng-model="StatsRefreshInterval" max="1000000" />
+                </div>
+            </div>
+            <br />
+
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Pair</th>
+                        <th>Submission</th>
+                        <th>Processed</th>
+                        <th>Trades</th>
+                        <th>CurrentMarketPrice</th>
+                        <th>Cancellation</th>
+                        <th>Book</th>
+                        <th>OpenOrders</th>
+                        <th>DustOrders</th>
+                        <th>TPS</th>
+                        <th>Pair InitTime</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="item in Stats" ng-click="ChangeMarketPair(item)">
+                        <td ng-bind="item.pair"></td>
+                        <td ng-bind="item.stat.submission"></td>
+                        <td ng-bind="item.stat.processed"></td>
+                        <td ng-bind="item.stat.trades"></td>
+                        <td ng-bind="item.stat.currentMarketPrice"></td> 
+                        <td ng-bind="item.stat.cancellation"></td>
+                        <td ng-bind="item.stat.book"></td>
+                        <td ng-bind="item.stat.openOrders"></td>
+                        <td ng-bind="item.stat.dustOrders"></td>
+                        <td ng-bind="item.stat.tps"></td>
+                        <td ng-bind="item.stat.initTime | date : format : timezone"></td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td ng-bind="'Total : '"></td>
+                        <td ng-bind="TotalStats.Submission"></td>
+                        <td ng-bind="TotalStats.Processed"></td>
+                        <td ng-bind="TotalStats.Trades"></td>
+                        <td ng-bind="'N/A'"></td>
+                        <td ng-bind="TotalStats.Cancellation"></td>
+                        <td ng-bind="TotalStats.Book"></td>
+                        <td ng-bind="TotalStats.OpenOrders"></td>
+                        <td ng-bind="TotalStats.DustOrders"></td>
+                        <td ng-bind="TotalStats.TPS"></td>
+                        <td>N/A</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         <div class="col-sm-12" ng-cloak ng-show="ws_trade">
             <br />
             <hr />
@@ -150,11 +228,10 @@
 
 
 
-        <!-- Modal Stats -->
-        <div class="modal fade" id="ME_Stats_Modal" role="dialog">
+        
+        <!--<div class="modal fade" id="ME_Stats_Modal" role="dialog">
             <div class="modal-dialog modal-lg">
-
-                <!-- Modal content-->
+                 
                 <div class="modal-content modal-lg">
                     <div class="modal-header">
                         <h4 class="modal-title">Matching Engine Live Statistics</h4>
@@ -221,7 +298,7 @@
                 </div>
 
             </div>
-        </div>
+        </div>-->
 
 
         <!-- Modal -->
@@ -277,11 +354,11 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="inParallel" class="mb-2 mr-sm-2">In Parallel:</label>
-                                    <input class="form-control" type="checkbox" id="inParallel"  ng-disabled="isOrderIsBeingPlaced" ng-model="inParallel">
+                                    <input class="form-control" type="checkbox" id="inParallel" ng-disabled="isOrderIsBeingPlaced" ng-model="inParallel">
                                 </div>
                                 <div class="form-group">
                                     <label for="isBulk" class="mb-2 mr-sm-2">Bulk Mode:</label>
-                                    <input class="form-control" type="checkbox" id="isBulk"  ng-disabled="isOrderIsBeingPlaced" ng-model="isBulk">
+                                    <input class="form-control" type="checkbox" id="isBulk" ng-disabled="isOrderIsBeingPlaced" ng-model="isBulk">
                                 </div>
                                 <div class="form-group">
                                     <label for="interval" class="mb-2 mr-sm-2">interval:</label>
@@ -532,7 +609,7 @@
 
             $scope.closeStatsModal = function () {
                 // closeModal('ME_Stats_Modal');
-               // $scope.StatsRefreshInterval = 5000;
+                // $scope.StatsRefreshInterval = 5000;
                 $scope.isStatsModalOpen = false;
                 $timeout.cancel($scope.StatsTimeout);
             }
@@ -574,7 +651,7 @@
                     contentType: "application/json"
                 }).then(function (data) {
                     if (data.data != null && data.data.status == "success") {
-                        console.log(data.data.data); 
+                        console.log(data.data.data);
                     }
                     $scope.isOrderIsBeingPlaced = false;
                 }, function (err) {
