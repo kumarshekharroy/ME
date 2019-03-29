@@ -82,6 +82,7 @@
   <ItemGroup>
     <Compile Include="MainService.cs" />
     <Compile Include="ME_Gateway.cs" />
+    <Compile Include="Model\Book.cs" />
     <Compile Include="Model\Constants.cs" />
     <Compile Include="Model\MatchResponse.cs" />
     <Compile Include="Model\Order.cs" />
@@ -105,6 +106,7 @@
     <Content Include="Lib\angular.min.js" />
     <Content Include="Lib\bootstrap.min.css" />
     <Content Include="Lib\bootstrap.min.js" />
+    <Content Include="Lib\font-awesome.js" />
     <Content Include="Lib\iziToast.min.css" />
     <Content Include="Lib\iziToast.min.js" />
     <Content Include="Lib\jquery.min.js" />

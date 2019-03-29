@@ -227,6 +227,23 @@ namespace ME
                     return this.BuyOrdersDict.Values.SelectMany(x => x).OrderBy(x => x.ID).ToList();
             }
         }
+        public List<Book> OrderBookSell
+        {
+            get
+            {
+                lock (sellLock)
+                    return this.SellOrdersDict.Select(x => new Book { Rate = x.Key, Volume = x.Value.Sum(y => y.PendingVolume) }).Take(100).Reverse().ToList();
+            }
+        }
+        public List<Book> OrderBookBuy
+        {
+            get
+            {
+                lock (buyLock)
+                    return this.BuyOrdersDict.Reverse().Select(x=> new Book  { Rate=x.Key,Volume=x.Value.Sum(y=>y.PendingVolume)}).Take(100).ToList();
+            }
+        }
+
         public ConcurrentQueue<Trade> AllTrades
         {
             get

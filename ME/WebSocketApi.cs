@@ -66,6 +66,11 @@ namespace ME
             else
                 Pair_connectionIDS.TryAdd(pair, new List<WebsocketUsersDetail> { new WebsocketUsersDetail { ConnectionId = ID, SessionStart = DateTime.UtcNow } }); 
             Send("Status : Connected");
+
+            if (pair != "All")
+            {
+                Send("Init :" + JsonConvert.SerializeObject(new { Buy = ME_Gateway.Instance[pair].OrderBookBuy , Sell= ME_Gateway.Instance[pair].OrderBookSell }));
+            }
         }
         protected override void OnClose(CloseEventArgs e)
         {
@@ -135,6 +140,11 @@ namespace ME
                 Pair_connectionIDS.TryAdd(pair, new List<WebsocketUsersDetail> { new WebsocketUsersDetail { ConnectionId = ID,  SessionStart = DateTime.UtcNow } });
 
             Send("Status : Connected");
+
+            if(pair!="All")
+            {
+                Send("Init :"+ JsonConvert.SerializeObject(ME_Gateway.Instance[pair].AllTrades.Take(50)));
+            }
         }
         protected override void OnClose(CloseEventArgs e)
         {

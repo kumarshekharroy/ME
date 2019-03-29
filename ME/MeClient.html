@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="Lib/bootstrap.min.css">
+    <script src="Lib/font-awesome.js"></script>
     <script src="Lib/angular.min.js"></script>
     <script src="Lib/popper.min.js"></script>
     <script src="Lib/jquery.min.js"></script>
@@ -17,9 +18,9 @@
 
     <div class="container-fluid" ng-controller="myController" ng-init="selectedPair=''">
 
-        <h1 class="text-center">Matching Engine Client</h1>
+        <h1 class="text-center"><!--Matching--> Engine Client</h1>
         <br />
-        <button type="button" class="btn btn-info btn-lg" ng-click="GetStats(true)">Stats</button>
+        <!--<button type="button" class="btn btn-info btn-lg" ng-click="GetStats(true)">Stats</button>-->
         <button type="button" class="btn btn-info btn-lg" ng-click="openManageModal()">Manage</button>
         <button type="button" class="btn btn-info btn-lg" ng-click="getEndpoints()">Endpoints</button>
 
@@ -28,13 +29,20 @@
             <br />
             <hr />
             <br />
-            <div class="col-sm-4">
-                <h2 class="text-center">Market Pairs</h2>
-            </div>
-            <div class="col-sm-6">
-                <div class="form-group">
-                    <label for="RefreshInterval">Market Refresh Interval:</label>
-                    <input class="form-control" type="number" id="RefreshInterval" ng-model="StatsRefreshInterval" max="1000000" />
+            <div class="row">
+                <div class="col-sm-6 offset-md-3">
+                    <h2 class="text-center">Market Pairs</h2>
+                </div>
+                <div class="col-sm-3">
+                    <div class="input-group" style="align-items:center;">
+                        <label for="RefreshInterval" class="m-0">Market Refresh Interval:</label>
+                        <input class="form-control" type="number" id="RefreshInterval" ng-model="StatsRefreshInterval" max="1000000" />
+                        <div class="input-group-append">
+                            <button type="button" ng-class="AutoRefreshStats?'btn-success':'btn-danger'" class="btn" aria-label="AutoRefreshStats" ng-click="AutoRefreshStats=!AutoRefreshStats; GetStats()">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                        </div> 
+                    </div> 
                 </div>
             </div>
             <br />
@@ -56,8 +64,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-repeat="item in Stats" ng-click="ChangeMarketPair(item)">
-                        <td ng-bind="item.pair"></td>
+                    <tr ng-repeat="item in Stats">
+                        <td style="color:blue;font-weight:700;cursor:pointer" ng-click="ChangeMarketPair(item)" ng-bind="item.pair"></td>
                         <td ng-bind="item.stat.submission"></td>
                         <td ng-bind="item.stat.processed"></td>
                         <td ng-bind="item.stat.trades"></td>
@@ -485,8 +493,7 @@
             $scope.ws_trade = undefined;
             $scope.ws_match = undefined;
             $scope.Trades = []; $scope.Matches = []; $scope.Stats = [];
-
-
+            
             if ("WebSocket" in window) {
 
 
@@ -495,13 +502,15 @@
                 alert("WebSocket NOT supported by your Browser!");
             }
 
-            $scope.SubTradeTicker = function () {
+
+            $scope.SubTradeTicker = function (pair = "") {
                 if ($scope.ws_trade != undefined) {
+                    $scope.ws_trade.close();  
                     $scope.ws_trade = undefined; $scope.Trades = [];
-                    return;
+                   // return;
                 }
                 // Let us open a web socket
-                $scope.ws_trade = new WebSocket("ws://localhost:8088/MEWC_TradeTicker?pair=");
+                $scope.ws_trade = new WebSocket("ws://localhost:8088/MEWC_TradeTicker?pair=" + pair);
 
                 $scope.ws_trade.onopen = function () {
                     $scope.Trades = [];
@@ -527,14 +536,15 @@
                     $scope.$apply();
                 };
             }
-            $scope.SubTradeTicker();
-            $scope.SubMatchTicker = function () {
+            //$scope.SubTradeTicker();
+            $scope.SubMatchTicker = function (pair="") {
                 if ($scope.ws_match != undefined) {
+                    $scope.ws_match.close(); 
                     $scope.ws_match = undefined; $scope.Matches = [];
-                    return;
+                   // return;
                 }
                 // Let us open a web socket
-                $scope.ws_match = new WebSocket("ws://localhost:8088/MEWC_MatchTicker?pair=");
+                $scope.ws_match = new WebSocket("ws://localhost:8088/MEWC_MatchTicker?pair=" + pair);
 
                 $scope.ws_match.onopen = function () {
                     $scope.Matches = [];
@@ -561,11 +571,29 @@
                     $scope.$apply();
                 };
             }
-            $scope.SubMatchTicker();
+            //$scope.SubMatchTicker();
+
+            $scope.ChangeMarketPair = function (item) {
+                $scope.SubTradeTicker(item.pair);
+                $scope.SubMatchTicker(item.pair);
+            }
 
 
 
-            $scope.StatsRefreshInterval = 5000; $scope.isStatsModalOpen = false;
+
+
+
+
+
+
+
+
+
+
+
+
+
+            $scope.StatsRefreshInterval = 5000; $scope.AutoRefreshStats = false;
             $scope.TotalStats = { Submission: 0, Processed: 0, Trades: 0, Cancellation: 0, Book: 0, OpenOrders: 0, DustOrders: 0, TPS: 0 };
             $scope.StatsTimeout;
             $scope.GetStats = function (showModal = false) {
@@ -590,34 +618,34 @@
                         });
                     }
 
-                    if (showModal) {
-                        openModal('ME_Stats_Modal');
-                        $scope.isStatsModalOpen = true;
-                    }
-                    if ($scope.isStatsModalOpen) {
+                    //if (showModal) {
+                    //    openModal('ME_Stats_Modal');
+                    //    $scope.isStatsModalOpen = true;
+                    //}
+                    if ($scope.AutoRefreshStats) {
                         $scope.StatsTimeout = $timeout(function () { $scope.GetStats(false) }, $scope.StatsRefreshInterval);
                     }
 
                 }, function (err) {
                     ShowAlert("Error while fetching stats.", "error");
                     console.log(err);
-                    if ($scope.isStatsModalOpen)
+                    if ($scope.AutoRefreshStats)
                         $scope.StatsTimeout = $timeout(function () { $scope.GetStats(true) }, 2 * $scope.StatsRefreshInterval);
                 });
             }
-            //$scope.GetStats();
+            $scope.GetStats();
 
             $scope.closeStatsModal = function () {
                 // closeModal('ME_Stats_Modal');
                 // $scope.StatsRefreshInterval = 5000;
-                $scope.isStatsModalOpen = false;
+                $scope.AutoRefreshStats = false;
                 $timeout.cancel($scope.StatsTimeout);
             }
 
 
             $scope.openManageModal = function () {
                 $scope.closeStatsModal();
-                $scope.isStatsModalOpen = true;
+                $scope.AutoRefreshStats = true;
                 $scope.GetStats(false);
                 openModal('ME_Manage_Modal');
             };
