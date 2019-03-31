@@ -227,20 +227,20 @@ namespace ME
                     return this.BuyOrdersDict.Values.SelectMany(x => x).OrderBy(x => x.ID).ToList();
             }
         }
-        public List<Book> OrderBookSell
+        public Dictionary<decimal, decimal> OrderBookSell
         {
             get
             {
                 lock (sellLock)
-                    return this.SellOrdersDict.Select(x => new Book { Rate = x.Key, Volume = x.Value.Sum(y => y.PendingVolume) }).Take(100).Reverse().ToList();
+                    return this.SellOrdersDict.Select(x => new Book { Rate = x.Key, Volume = x.Value.Sum(y => y.PendingVolume) }).Take(100).Reverse().ToDictionary(x => x.Rate, x => x.Volume); ;
             }
         }
-        public List<Book> OrderBookBuy
+        public Dictionary<decimal,decimal> OrderBookBuy
         {
             get
             {
                 lock (buyLock)
-                    return this.BuyOrdersDict.Reverse().Select(x=> new Book  { Rate=x.Key,Volume=x.Value.Sum(y=>y.PendingVolume)}).Take(100).ToList();
+                    return this.BuyOrdersDict.Reverse().Select(x=> new Book  { Rate=x.Key,Volume=x.Value.Sum(y=>y.PendingVolume)}).Take(100).ToDictionary(x=>x.Rate,x=>x.Volume);
             }
         }
 

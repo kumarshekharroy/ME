@@ -12,44 +12,40 @@
     <script src="Lib/bootstrap.min.js"></script>
     <link href="Lib/Styles.css" rel="stylesheet" />
     <link href="Lib/iziToast.min.css" rel="stylesheet" />
-    <script src="Lib/iziToast.min.js"></script>
+    <script src="Lib/iziToast.min.js"></script> 
 </head>
 <body ng-app="myApp">
-
-    <div class="container-fluid" ng-controller="myController" ng-init="selectedPair=''">
-
+    <div class="container-fluid" ng-controller="myController">
         <h1 class="text-center"><!--Matching--> Engine Client</h1>
-        <br />
-        <!--<button type="button" class="btn btn-info btn-lg" ng-click="GetStats(true)">Stats</button>-->
-        <button type="button" class="btn btn-info btn-lg" ng-click="openManageModal()">Manage</button>
-        <button type="button" class="btn btn-info btn-lg" ng-click="getEndpoints()">Endpoints</button>
-
-
         <div class="col-sm-12" ng-cloak ng-show="Stats">
-            <br />
             <hr />
-            <br />
             <div class="row">
-                <div class="col-sm-6 offset-md-3">
-                    <h2 class="text-center">Market Pairs</h2>
+                <div class="col-sm-3">
+                    <div class="input-group" style="align-items:center;">
+                        <button type="button" class="btn btn-warning btn-sm mr-1" ng-click="openManageModal()">Order Bot</button>
+                        <button type="button" class="btn btn-info btn-sm mr-1" ng-click="getEndpoints()">Endpoints</button>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <h3 class="text-center">Market Pairs</h3>
                 </div>
                 <div class="col-sm-3">
                     <div class="input-group" style="align-items:center;">
                         <label for="RefreshInterval" class="m-0">Market Refresh Interval:</label>
-                        <input class="form-control" type="number" id="RefreshInterval" ng-model="StatsRefreshInterval" max="1000000" />
+                        <input class="form-control  form-control-sm" type="number" id="RefreshInterval" ng-model="StatsRefreshInterval" max="1000000" />
                         <div class="input-group-append">
-                            <button type="button" ng-class="AutoRefreshStats?'btn-success':'btn-danger'" class="btn" aria-label="AutoRefreshStats" ng-click="AutoRefreshStats=!AutoRefreshStats; GetStats()">
+                            <button type="button" title="{{AutoRefreshStats?'Auto Refresh Enabled!':'Auto Refresh Disabled!'}}" ng-class="AutoRefreshStats?'btn-success':'btn-danger'" class="btn btn-sm" aria-label="AutoRefreshStats" ng-click="AutoRefreshStats=!AutoRefreshStats; GetStats()">
                                 <i class="fas fa-sync"></i>
                             </button>
-                        </div> 
-                    </div> 
+                        </div>
+                    </div>
                 </div>
             </div>
             <br />
-
             <table class="table table-bordered">
                 <thead>
                     <tr>
+                        <th>Reset</th>
                         <th>Pair</th>
                         <th>Submission</th>
                         <th>Processed</th>
@@ -61,258 +57,132 @@
                         <th>DustOrders</th>
                         <th>TPS</th>
                         <th>Pair InitTime</th>
+                        <th>Ticker</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-repeat="item in Stats">
-                        <td style="color:blue;font-weight:700;cursor:pointer" ng-click="ChangeMarketPair(item)" ng-bind="item.pair"></td>
+                    <tr ng-class="{'info':item.pair==selectedPair}" ng-repeat="item in Stats">
+                        <!--track by $index-->
+                        <td><span class="p-2" ng-click="ResetME(item.pair)" style="color:red;font-size:larger; cursor:pointer"><i class="far fa-trash-alt"></i></span></td>
+                        <td style="color:blue;font-weight:700;cursor:pointer" ng-click="SubscribeToMarketPair(item)" ng-bind="item.pair"></td>
                         <td ng-bind="item.stat.submission"></td>
                         <td ng-bind="item.stat.processed"></td>
                         <td ng-bind="item.stat.trades"></td>
-                        <td ng-bind="item.stat.currentMarketPrice"></td> 
+                        <td ng-bind="item.stat.currentMarketPrice"></td>
                         <td ng-bind="item.stat.cancellation"></td>
                         <td ng-bind="item.stat.book"></td>
                         <td ng-bind="item.stat.openOrders"></td>
                         <td ng-bind="item.stat.dustOrders"></td>
                         <td ng-bind="item.stat.tps"></td>
                         <td ng-bind="item.stat.initTime | date : format : timezone"></td>
+                        <td>
+                            <span title="Click to Unsubscribe!" ng-show="item.pair==selectedPair" ng-click="UnSubscribeFromAllMarketPair()" style="color:green;font-size:larger; cursor:pointer"><i class="fas fa-volume-up"></i></span>
+                            <span title="Click to Subscribe!" ng-click="SubscribeToMarketPair(item)" ng-show="item.pair!=selectedPair" style="color:gray;font-size:larger; cursor:pointer"><i class="fas fa-volume-mute"></i></span>
+                        </td>
                     </tr>
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td ng-bind="'Total : '"></td>
-                        <td ng-bind="TotalStats.Submission"></td>
-                        <td ng-bind="TotalStats.Processed"></td>
-                        <td ng-bind="TotalStats.Trades"></td>
-                        <td ng-bind="'N/A'"></td>
-                        <td ng-bind="TotalStats.Cancellation"></td>
-                        <td ng-bind="TotalStats.Book"></td>
-                        <td ng-bind="TotalStats.OpenOrders"></td>
-                        <td ng-bind="TotalStats.DustOrders"></td>
-                        <td ng-bind="TotalStats.TPS"></td>
-                        <td>N/A</td>
+                        <th><span class="p-2" title="Reset all pairs!" ng-click="ResetME()" style="color:red; font-size:x-large; cursor:pointer"><i class="fas fa-trash-alt"></i></span></th>
+                        <th ng-bind="'Total : '"></th>
+                        <th ng-bind="TotalStats.Submission"></th>
+                        <th ng-bind="TotalStats.Processed"></th>
+                        <th ng-bind="TotalStats.Trades"></th>
+                        <th ng-bind="'N/A'"></th>
+                        <th ng-bind="TotalStats.Cancellation"></th>
+                        <th ng-bind="TotalStats.Book"></th>
+                        <th ng-bind="TotalStats.OpenOrders"></th>
+                        <th ng-bind="TotalStats.DustOrders"></th>
+                        <th ng-bind="TotalStats.TPS"></th>
+                        <th>N/A</th>
+                        <th></th>
                     </tr>
                 </tfoot>
             </table>
         </div>
 
 
+        <div class="row">
 
+            <div class="col-sm-5" ng-cloak ng-show="ws_match">
+                <br />
+                <hr />
+                <br />
+                <h4 class="text-center">Buy Order Book ({{selectedPair}})</h4>
+                <br />
+                <table class="table table-bordered table-condensed">
+                    <thead>
+                        <tr>
+                            <th>Depth</th>
+                            <th>Rate</th>
+                            <th>Volume</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="danger" ng-repeat="item in OrderBook_SellArray | limitTo:10 | orderBy:'key':true">
+                            <td ng-bind="(OrderBook_SellArray.length>10?10:OrderBook_SellArray.length)-$index"></td>
+                            <td ng-bind="item.key"></td>
+                            <td ng-bind="item.value"></td>
+                            <td ng-bind="item.key*item.value |number:8"></td>
+                        </tr>
+                        <tr class="info">
+                            <td>0</td>
+                            <td ng-bind="'>>>>>> '"></td>
+                            <td style="font-weight:800; text-align:center" ng-bind="marketRate"></td>
+                            <td ng-bind="' <<<<<<'"></td>
+                        </tr>
+                        <tr class="success" ng-repeat="item in OrderBook_BuyArray | orderBy:'key':true | limitTo:10">
+                            <td ng-bind="$index+1"></td>
+                            <td ng-bind="item.key"></td>
+                            <td ng-bind="item.value"></td>
+                            <td ng-bind="item.key*item.value |number:8"></td>
+                        </tr>
 
-
-
-
-
-
-
-
-
-
-
-        <div class="col-sm-12" ng-cloak ng-show="ws_trade">
-            <br />
-            <hr />
-            <br />
-            <h2 class="text-center">Trades (Last 10)</h2>
-            <br />
-            <table class="table table-bordered table-condensed">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Pair</th>
-                        <th>UserID(Buy/Sell)</th>
-                        <th>OrderID(Buy/Sell)</th>
-                        <th>Side</th>
-                        <th>Volume</th>
-                        <th>Rate</th>
-                        <th>TimeStamp</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-class="item.Side==1?'success':'danger'" ng-repeat="item in Trades">
-                        <td ng-bind="item.ID"></td>
-                        <td ng-bind="item.Pair"></td>
-                        <td ng-bind="item.UserID_Buyer+'/'+item.UserID_Seller"></td>
-                        <td ng-bind="item.OrderID_Buy+'/'+item.OrderID_Sell"></td>
-                        <td ng-bind="item.Side"></td>
-                        <td ng-bind="item.Volume"></td>
-                        <td ng-bind="item.Rate"></td>
-                        <td ng-bind="item.TimeStamp | date : format : timezone"></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="col-sm-12" ng-cloak ng-show="ws_match">
-
-            <br />
-            <hr />
-            <br />
-
-            <h2 class="text-center">Matches (Last 10)</h2>
-            <br />
-            <table class="table table-stripped table-bordered table-condensed">
-                <thead>
-                    <tr>
-                        <th>Pair</th>
-                        <th>OD_ID</th>
-                        <th>UserID</th>
-                        <th>Type</th>
-                        <th>Stop</th>
-                        <th>Rate</th>
-                        <th>Pending/Orig Vol</th>
-                        <th>Accepted Dt</th>
-                        <th>Modified Dt</th>
-                        <th>Status</th>
-                        <th>TradeID</th>
-                        <th>Buyer/Seller</th>
-                        <th>BuyID/SellID)</th>
-                        <th>Volume</th>
-                        <th>Rate</th>
-                        <th>TimeStamp</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="item in Matches">
-                        <td ng-bind="item.Pair"></td>
-                        <td colspan="9" style="padding:0">
-
-                            <table class="table  table-condensed">
-
-                                <tbody>
-                                    <tr ng-class="'danger'" ng-repeat=" inneritem in item.UpdatedSellOrders">
-                                        <td ng-bind="inneritem.ID"></td>
-                                        <td ng-bind="inneritem.UserID"></td>
-                                        <td ng-bind="inneritem.Type"></td>
-                                        <td ng-bind="inneritem.Stop| number:4"></td>
-                                        <td ng-bind="inneritem.Rate| number:4"></td>
-                                        <td ng-bind="inneritem.PendingVolume+'/'+inneritem.Volume"></td>
-                                        <td ng-bind="inneritem.AcceptedOn| date : format : timezone"></td>
-                                        <td ng-bind="inneritem.ModifiedOn| date : format : timezone"></td>
-                                        <td ng-bind="inneritem.Status"></td>
-                                    </tr>
-                                    <tr ng-class="'success'" ng-repeat=" inneritem in item.UpdatedBuyOrders">
-                                        <td ng-bind="inneritem.ID"></td>
-                                        <td ng-bind="inneritem.UserID"></td>
-                                        <td ng-bind="inneritem.Type"></td>
-                                        <td ng-bind="inneritem.Stop| number:4"></td>
-                                        <td ng-bind="inneritem.Rate| number:4"></td>
-                                        <td ng-bind="inneritem.PendingVolume+'/'+inneritem.Volume"></td>
-                                        <td ng-bind="inneritem.AcceptedOn | date : format : timezone"></td>
-                                        <td ng-bind="inneritem.ModifiedOn | date : format : timezone"></td>
-                                        <td ng-bind="inneritem.Status"></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-
-
-                        </td>
-                        <td colspan="7" style="padding:0">
-                            <table class="table table-bordered table-condensed">
-                                <tbody>
-                                    <tr ng-class="inneritem.Side==1?'success':'danger'" ng-repeat=" inneritem in item.NewTrades">
-                                        <td ng-bind="inneritem.ID"></td>
-                                        <td ng-bind="inneritem.UserID_Buyer+'/'+inneritem.UserID_Seller"></td>
-                                        <td ng-bind="inneritem.OrderID_Buy+'/'+inneritem.OrderID_Sell"></td>
-                                        <td ng-bind="inneritem.Volume"></td>
-                                        <td ng-bind="inneritem.Rate"></td>
-                                        <td ng-bind="inneritem.TimeStamp | date : format : timezone"></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-
-
-
-
-
-
-
-
-
-
-        
-        <!--<div class="modal fade" id="ME_Stats_Modal" role="dialog">
-            <div class="modal-dialog modal-lg">
-                 
-                <div class="modal-content modal-lg">
-                    <div class="modal-header">
-                        <h4 class="modal-title">Matching Engine Live Statistics</h4>
-                        <button type="button" class="close" ng-click="closeStatsModal()" data-dismiss="modal">&times;</button>
-                    </div>  <div class="modal-body">
-                        <div class="row">
-                            <div class="col-sm-6">
-                                <div class="form-group">
-                                    <label for="numberOfOrders" class="mb-2 mr-sm-2">Refresh Interval ( MilliSeconds ):</label>
-                                </div>
-                            </div>
-                            <div class="col-sm-4">
-                                <div class="form-group">
-                                    <input class="form-control" type="number" id="RefreshInterval" ng-model="StatsRefreshInterval" max="1000000" />
-                                </div>
-                            </div>
-
-                        </div>
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Pair</th>
-                                    <th>Submission</th>
-                                    <th>Processed</th>
-                                    <th>Trades</th>
-                                    <th>Cancellation</th>
-                                    <th>Book</th>
-                                    <th>OpenOrders</th>
-                                    <th>DustOrders</th>
-                                    <th>TPS</th>
-                                    <th>Pair InitTime</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr ng-repeat="item in Stats">
-                                    <td ng-bind="item.pair"></td>
-                                    <td ng-bind="item.stat.submission"></td>
-                                    <td ng-bind="item.stat.processed"></td>
-                                    <td ng-bind="item.stat.trades"></td>
-                                    <td ng-bind="item.stat.cancellation"></td>
-                                    <td ng-bind="item.stat.book"></td>
-                                    <td ng-bind="item.stat.openOrders"></td>
-                                    <td ng-bind="item.stat.dustOrders"></td>
-                                    <td ng-bind="item.stat.tps"></td>
-                                    <td ng-bind="item.stat.initTime | date : format : timezone"></td>
-                                </tr>
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td ng-bind="'Total : '"></td>
-                                    <td ng-bind="TotalStats.Submission"></td>
-                                    <td ng-bind="TotalStats.Processed"></td>
-                                    <td ng-bind="TotalStats.Trades"></td>
-                                    <td ng-bind="TotalStats.Cancellation"></td>
-                                    <td ng-bind="TotalStats.Book"></td>
-                                    <td ng-bind="TotalStats.OpenOrders"></td>
-                                    <td ng-bind="TotalStats.DustOrders"></td>
-                                    <td ng-bind="TotalStats.TPS"></td>
-                                    <td>N/A</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
+                    </tbody>
+                </table>
 
             </div>
-        </div>-->
+
+            <div class="col-sm-7" ng-cloak ng-show="ws_trade">
+                <br />
+                <hr />
+                <br />
+                <h4 class="text-center">Trades: ({{selectedPair}})</h4>
+                <br />
+                <table class="table table-bordered table-condensed">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Pair</th>
+                            <th>UserID(Buy/Sell)</th>
+                            <th>OrderID(Buy/Sell)</th>
+                            <th>Side</th>
+                            <th>Volume</th>
+                            <th>Rate</th>
+                            <th>TimeStamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-class="{'success':item.Side==1,'danger':item.Side==2}" ng-repeat="item in Trades | limitTo:21">
+                            <td ng-bind="item.ID"></td>
+                            <td ng-bind="item.Pair"></td>
+                            <td ng-bind="item.UserID_Buyer+'/'+item.UserID_Seller"></td>
+                            <td ng-bind="item.OrderID_Buy+'/'+item.OrderID_Sell"></td>
+                            <td ng-bind="item.Side"></td>
+                            <td ng-bind="item.Volume"></td>
+                            <td ng-bind="item.Rate"></td>
+                            <td ng-bind="item.TimeStamp | date : format : timezone"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
 
+        </div> 
         <!-- Modal -->
         <div class="modal fade" id="ME_Endpoints_Modal" role="dialog">
             <div class="modal-dialog modal-lg">
-
                 <!-- Modal content-->
                 <div class="modal-content modal-lg">
                     <div class="modal-header">
@@ -337,24 +207,19 @@
                         </table>
                     </div>
                 </div>
-
             </div>
         </div>
-
-
 
         <!-- Modal Manage-->
         <div class="modal fade" id="ME_Manage_Modal" role="dialog">
             <div class="modal-dialog modal-lg">
-
                 <!-- Modal content-->
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h4 class="modal-title">Matching Engine Client Settings</h4>
+                        <h4 class="modal-title">Order Bot</h4>
                         <button type="button" class="close" data-dismiss="modal" ng-click="closeStatsModal()">&times;</button>
                     </div>  <div class="modal-body">
                         <div class="row">
-
                             <div class="col-sm-6">
                                 <div class="form-group">
                                     <label for="numberOfOrders" class="mb-2 mr-sm-2">Number Of Orders:</label>
@@ -380,51 +245,11 @@
                                     <button id="placeOrder" type="button" class="btn btn-sm btn-success" ng-disabled="numberOfOrders<=0 || (isBulk && (!pair || pair.trim()== '')) || isOrderIsBeingPlaced" ng-click="PlaceOrder(numberOfOrders,inParallel,isBulk,pair,interval)">Place Order</button>
                                 </div>
                             </div>
-                            <div class="col-sm-6">
-                                <div class="col-sm-12">
-                                    <div class="form-group">
-                                        <label for="btn_ws_trade" class="mb-2 mr-sm-2">Trade Ticker:</label>
-                                        <button id="btn_ws_trade" type="button" class="btn btn-sm" ng-class="ws_trade?'btn-danger':'btn-success'" ng-click="SubTradeTicker()"><span ng-bind="ws_trade?'Unsubscribe':'Subscribe'"></span></button>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="btn_ws_match" class="mb-2 mr-sm-2">Match Ticker:</label>
-                                        <button id="btn_ws_match" type="button" class="btn btn-sm" ng-class="ws_match?'btn-danger':'btn-success'" ng-click="SubMatchTicker()"><span ng-bind="ws_match?'Unsubscribe':'Subscribe'"></span></button>
-
-                                    </div>
-
-                                    <br />
-                                    <br />
-                                    <br />
-                                </div>
-                                <div class="col-sm-12">
-                                    <div class="form-group">
-                                        <label for="pair">Pair:</label>
-                                        <select class="form-control" id="pair" ng-model="selectedPair">
-                                            <option value="">Select Pair</option>
-                                            <option ng-repeat="item in Stats" ng-value="item.pair">{{item.pair}}</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group text-center">
-                                        <button id="resetMe" type="button" class="btn btn-sm btn-danger" ng-disabled="selectedPair==undefined" ng-click="ResetME(selectedPair)">Reset ME Pair</button>
-                                    </div>
-                                </div>
-
-                            </div>
                         </div>
-
                     </div>
-                    <!--<div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    </div>-->
                 </div>
-
             </div>
         </div>
-
-
-
-
-
 
 
 
@@ -488,12 +313,48 @@
 
 
         var app = angular.module('myApp', []);
+        app.filter('toArray', function () {
+            return function (obj) {
+                if (!(obj instanceof Object)) return obj;
+                return Object.entries(obj).map(([key, value]) => ({ key, value }))
+            }
+        });
+
         app.controller('myController', function ($scope, $http, $timeout) {
+
+            $scope.ResetAllVariables = function (trade = true, match = true, stat = true, other = true) {
+                if (trade == true && $scope.ws_trade != undefined) {
+                    $scope.ws_trade.close();
+                    $scope.ws_trade = undefined; $scope.Trades = [];
+                }
+
+                if (match == true && $scope.ws_match != undefined) {
+                    $scope.ws_match.close();
+                    $scope.ws_match = undefined;
+                    $scope.OrderBook_Buy = {};
+                    $scope.OrderBook_Sell = {};
+                    $scope.OrderBook_BuyArray = [];
+                    $scope.OrderBook_SellArray = [];
+                }
+                if (stat == true)
+                    $scope.Stats = [];
+                if (other == true) {
+                    $scope.selectedPair = 'N/A'; $scope.marketRate = 0;
+                }
+            }
+            $scope.ResetAllVariables();
             $scope.format = 'h:mm:ss sss';
-            $scope.ws_trade = undefined;
-            $scope.ws_match = undefined;
-            $scope.Trades = []; $scope.Matches = []; $scope.Stats = [];
-            
+
+            //public enum OrderStatus {
+            //    None = 1,
+            //    Accepted = 2,
+            //    PartiallyFilled = 3,
+            //    FullyFilled = 4,
+            //    Rejected = 5,
+            //    CancellationPending = 6,
+            //    CancellationAccepted = 7,
+            //    CancellationRejected = 8,
+            //}
             if ("WebSocket" in window) {
 
 
@@ -504,19 +365,13 @@
 
 
             $scope.SubTradeTicker = function (pair = "") {
-                if ($scope.ws_trade != undefined) {
-                    $scope.ws_trade.close();  
-                    $scope.ws_trade = undefined; $scope.Trades = [];
-                   // return;
-                }
+
+                $scope.ResetAllVariables(true, false, false, false);
                 // Let us open a web socket
                 $scope.ws_trade = new WebSocket("ws://localhost:8088/MEWC_TradeTicker?pair=" + pair);
 
                 $scope.ws_trade.onopen = function () {
-                    $scope.Trades = [];
-                    // Web Socket is connected, send data using send()
                     $scope.ws_trade.send("Message to send");
-                    $scope.$apply();
                 };
 
                 $scope.ws_trade.onmessage = function (evt) {
@@ -524,34 +379,30 @@
                     //console.log(received_msg);
                     if (received_msg.startsWith('Status'))
                         return;
-                    $scope.Trades.unshift(JSON.parse(received_msg));
-                    if ($scope.Trades.length > 10)
-                        $scope.Trades.pop();
+
+                    if (received_msg.startsWith('Init :')) {
+                        $scope.Trades = JSON.parse(received_msg.replace('Init :', ''));
+                    }
+                    else {
+                        $scope.Trades.unshift(JSON.parse(received_msg));
+                        if ($scope.Trades.length > 10)
+                            $scope.Trades.pop();
+                    }
                     $scope.$apply();
                 };
 
                 $scope.ws_trade.onclose = function () {
                     console.log("connection closed.");
-                    $scope.ws_trade = undefined;
-                    $scope.$apply();
                 };
             }
-            //$scope.SubTradeTicker();
-            $scope.SubMatchTicker = function (pair="") {
-                if ($scope.ws_match != undefined) {
-                    $scope.ws_match.close(); 
-                    $scope.ws_match = undefined; $scope.Matches = [];
-                   // return;
-                }
+            $scope.SubMatchTicker = function (pair = "") {
+
+                $scope.ResetAllVariables(false, true, false, false);
                 // Let us open a web socket
                 $scope.ws_match = new WebSocket("ws://localhost:8088/MEWC_MatchTicker?pair=" + pair);
 
                 $scope.ws_match.onopen = function () {
-                    $scope.Matches = [];
-                    // Web Socket is connected, send data using send()
                     $scope.ws_match.send("Message to send");
-                    $scope.$apply();
-
                 };
 
                 $scope.ws_match.onmessage = function (evt) {
@@ -559,36 +410,104 @@
                     //console.log(received_msg);
                     if (received_msg.startsWith('Status'))
                         return;
-                    $scope.Matches.unshift(JSON.parse(received_msg));
-                    if ($scope.Matches.length > 10)
-                        $scope.Matches.pop();
+
+                    if (received_msg.startsWith('Init :')) {
+                        let OrderBook = JSON.parse(received_msg.replace('Init :', ''));
+                        $scope.OrderBook_Sell = OrderBook.Sell;
+                        $scope.OrderBook_Buy = OrderBook.Buy;
+                        // $scope.Matches = JSON.parse(received_msg) ;
+                    }
+                    else {
+                        let MatchResponse = JSON.parse(received_msg);
+                        angular.forEach(MatchResponse.UpdatedSellOrders, function (item, index) {
+                            //No Order with Rate exists
+                            if ($scope.OrderBook_Sell[item.Rate] === undefined) {
+
+                                //New Order
+                                if (item.Status == 2) {
+                                    $scope.OrderBook_Sell[item.Rate] = item.PendingVolume;
+                                }
+                            }
+                            else {
+                                //Rejected Or Cencellation
+                                let existingVol = $scope.OrderBook_Sell[item.Rate];
+                                if (item.Status == 5 || item.Status == 7 || item.Status == 8) {
+                                    if (existingVol > item.PendingVolume)
+                                        $scope.OrderBook_Sell[item.Rate] = (existingVol - item.PendingVolume);
+                                    else
+                                        delete $scope.OrderBook_Sell[item.Rate];
+                                }
+                            }
+
+                        });
+
+                        angular.forEach(MatchResponse.UpdatedBuyOrders, function (item, index) {
+                            //No Order with Rate exists
+                            if ($scope.OrderBook_Buy[item.Rate] === undefined) {
+
+                                //New Order
+                                if (item.Status == 2) {
+                                    $scope.OrderBook_Buy[item.Rate] = item.PendingVolume;
+                                }
+                            }
+                            else {
+                                //Rejected Or Cencellation
+                                let existingVol = $scope.OrderBook_Buy[item.Rate];
+                                if (item.Status == 5 || item.Status == 7 || item.Status == 8) {
+                                    if (existingVol > item.PendingVolume)
+                                        $scope.OrderBook_Buy[item.Rate] = (existingVol - item.PendingVolume);
+                                    else
+                                        delete $scope.OrderBook_Buy[item.Rate];
+                                }
+                            }
+
+                        });
+
+                        angular.forEach(MatchResponse.NewTrades, function (item, index) {
+                            //If Order with Rate exists
+                            let existingVol_Buy = $scope.OrderBook_Buy[item.Rate];
+                            if (!(existingVol_Buy === undefined)) {
+                                if (existingVol_Buy > item.Volume)
+                                    $scope.OrderBook_Buy[item.Rate] = (existingVol_Buy - item.Volume);
+                                else
+                                    delete $scope.OrderBook_Buy[item.Rate];
+                            }
+                            let existingVol_Sell = $scope.OrderBook_Sell[item.Rate];
+                            if (!(existingVol_Sell === undefined)) {
+
+                                if (existingVol_Sell > item.Volume)
+                                    $scope.OrderBook_Sell[item.Rate] = (existingVol_Sell - item.Volume);
+                                else
+                                    delete $scope.OrderBook_Sell[item.Rate];
+                            }
+                            $scope.marketRate = item.Rate;
+                        });
+
+                    }
+
+                    $scope.OrderBook_BuyArray = Object.entries($scope.OrderBook_Buy).map(([key, value]) => ({ key, value }));
+                    $scope.OrderBook_SellArray = Object.entries($scope.OrderBook_Sell).map(([key, value]) => ({ key, value }));
+
                     $scope.$apply();
                 };
 
                 $scope.ws_match.onclose = function () {
                     console.log("connection closed.");
-                    $scope.ws_match = undefined;
-                    $scope.$apply();
                 };
             }
             //$scope.SubMatchTicker();
 
-            $scope.ChangeMarketPair = function (item) {
+            $scope.SubscribeToMarketPair = function (item) {
+                $scope.selectedPair = item.pair;
+                $scope.marketRate = item.stat.currentMarketPrice;
                 $scope.SubTradeTicker(item.pair);
                 $scope.SubMatchTicker(item.pair);
             }
 
 
-
-
-
-
-
-
-
-
-
-
+            $scope.UnSubscribeFromAllMarketPair = function () {
+                $scope.ResetAllVariables(true, true, false, true);
+            }
 
 
 
@@ -596,7 +515,7 @@
             $scope.StatsRefreshInterval = 5000; $scope.AutoRefreshStats = false;
             $scope.TotalStats = { Submission: 0, Processed: 0, Trades: 0, Cancellation: 0, Book: 0, OpenOrders: 0, DustOrders: 0, TPS: 0 };
             $scope.StatsTimeout;
-            $scope.GetStats = function (showModal = false) {
+            $scope.GetStats = function () {
                 $http({
                     method: "Get",
                     url: "http://localhost:8080/Stats?Pair=",
@@ -618,26 +537,20 @@
                         });
                     }
 
-                    //if (showModal) {
-                    //    openModal('ME_Stats_Modal');
-                    //    $scope.isStatsModalOpen = true;
-                    //}
                     if ($scope.AutoRefreshStats) {
-                        $scope.StatsTimeout = $timeout(function () { $scope.GetStats(false) }, $scope.StatsRefreshInterval);
+                        $scope.StatsTimeout = $timeout(function () { $scope.GetStats() }, $scope.StatsRefreshInterval);
                     }
 
                 }, function (err) {
                     ShowAlert("Error while fetching stats.", "error");
                     console.log(err);
                     if ($scope.AutoRefreshStats)
-                        $scope.StatsTimeout = $timeout(function () { $scope.GetStats(true) }, 2 * $scope.StatsRefreshInterval);
+                        $scope.StatsTimeout = $timeout(function () { $scope.GetStats() }, 2 * $scope.StatsRefreshInterval);
                 });
             }
             $scope.GetStats();
 
             $scope.closeStatsModal = function () {
-                // closeModal('ME_Stats_Modal');
-                // $scope.StatsRefreshInterval = 5000;
                 $scope.AutoRefreshStats = false;
                 $timeout.cancel($scope.StatsTimeout);
             }
@@ -659,9 +572,9 @@
                     contentType: "application/json"
                 }).then(function (data) {
                     if (data.data != null && data.data.status == "success") {
-                        $scope.Matches = []; $scope.Trades = [];
+                        if (pair == "" || pair == $scope.selectedPair)
+                            $scope.ResetAllVariables();
                         console.log(data.data.data);
-                        $('#ME_Manage_Modal').modal('hide');
                     }
                 }, function (err) {
                     console.log(err);
@@ -710,7 +623,5 @@
 
         });
     </script>
-
 </body>
-
 </html>

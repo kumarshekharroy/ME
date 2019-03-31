@@ -143,7 +143,7 @@ namespace ME
 
             if(pair!="All")
             {
-                Send("Init :"+ JsonConvert.SerializeObject(ME_Gateway.Instance[pair].AllTrades.Take(50)));
+                Send("Init :"+ JsonConvert.SerializeObject(ME_Gateway.Instance[pair].AllTrades.Reverse().Take(50)));
             }
         }
         protected override void OnClose(CloseEventArgs e)
