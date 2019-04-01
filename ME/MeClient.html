@@ -108,7 +108,7 @@
                 <br />
                 <hr />
                 <br />
-                <h4 class="text-center">Buy Order Book ({{selectedPair}})</h4>
+                <h4 class="text-center">Order Book ({{selectedPair}})</h4>
                 <br />
                 <table class="table table-bordered table-condensed">
                     <thead>
@@ -123,7 +123,7 @@
                         <tr class="danger" ng-repeat="item in OrderBook_SellArray | limitTo:10 | orderBy:'key':true">
                             <td ng-bind="(OrderBook_SellArray.length>10?10:OrderBook_SellArray.length)-$index"></td>
                             <td ng-bind="item.key"></td>
-                            <td ng-bind="item.value"></td>
+                            <td ng-bind="item.value |number:8"></td>
                             <td ng-bind="item.key*item.value |number:8"></td>
                         </tr>
                         <tr class="info">
@@ -135,7 +135,7 @@
                         <tr class="success" ng-repeat="item in OrderBook_BuyArray | orderBy:'key':true | limitTo:10">
                             <td ng-bind="$index+1"></td>
                             <td ng-bind="item.key"></td>
-                            <td ng-bind="item.value"></td>
+                            <td ng-bind="item.value |number:8"></td>
                             <td ng-bind="item.key*item.value |number:8"></td>
                         </tr>
 

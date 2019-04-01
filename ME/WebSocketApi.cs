@@ -1,13 +1,8 @@
-﻿using ME.Model;
-
-using Newtonsoft.Json;
-
+﻿using Newtonsoft.Json; 
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
+using System.Linq; 
 using WebSocketSharp;
 using WebSocketSharp.Server;
 
@@ -25,6 +20,8 @@ namespace ME
     {
         private static ConcurrentDictionary<string, List<WebsocketUsersDetail>> Pair_connectionIDS = new ConcurrentDictionary<string, List<WebsocketUsersDetail>>();
 
+        private static ConcurrentDictionary<string, string> ConnIDToPairMap = new ConcurrentDictionary<string, string>();
+
 
         public static WC_MatchTicker Instance = null;
 
@@ -36,17 +33,17 @@ namespace ME
         {
             try
             {
-                var payload = JsonConvert.SerializeObject(data);
-                Parallel.ForEach(Pair_connectionIDS.Keys.Where(key => key.ToLower() == pair.ToLower() || key.ToLower() == "all"), (key) =>
-                {
-                    Parallel.ForEach(Pair_connectionIDS[key], (userConnDetail) =>
+                var payload = JsonConvert.SerializeObject(data); 
+
+                List<WebsocketUsersDetail> websocketUsersDetail; 
+                if (Pair_connectionIDS.TryGetValue(pair, out websocketUsersDetail))
+                    websocketUsersDetail.ForEach(userConnDetail =>
                     {
-                        Program.wssv.WebSocketServices["/MEWC_MatchTicker"].Sessions.SendToAsync(payload, userConnDetail.ConnectionId, (isSent) => {
+                        Program.wssv.WebSocketServices["/MEWC_MatchTicker"].Sessions.SendToAsync(payload, userConnDetail.ConnectionId, (isSent) =>
+                        {
                             //if (!isSent) throw new MissingMemberException();
                         });
                     });
-                });
-
             }
             catch (Exception ex)
             {
@@ -60,7 +57,12 @@ namespace ME
         {
             Send("Status : Connecting"); 
             var pair = string.IsNullOrWhiteSpace(Context.QueryString["pair"]) ? "All": Context.QueryString["pair"];
+
+            if (!ConnIDToPairMap.TryAdd(ID, pair))
+                return;
+
             List<WebsocketUsersDetail> websocketUsersDetail;
+
             if (Pair_connectionIDS.TryGetValue(pair, out websocketUsersDetail))
                 websocketUsersDetail.Add(new WebsocketUsersDetail { ConnectionId = ID,  SessionStart = DateTime.UtcNow });
             else
@@ -74,13 +76,19 @@ namespace ME
         }
         protected override void OnClose(CloseEventArgs e)
         {
-            Parallel.ForEach(Pair_connectionIDS.Values, users =>
+            string pair;
+            if (!ConnIDToPairMap.TryGetValue(ID, out pair))
+                return;
+
+            List<WebsocketUsersDetail> websocketUsersDetail;
+
+            if(Pair_connectionIDS.TryGetValue(pair, out websocketUsersDetail))
             {
-                var userConnDetail = users.Where(user => user.ConnectionId == ID).FirstOrDefault();
+                var userConnDetail = websocketUsersDetail.Where(user => user.ConnectionId == ID).FirstOrDefault();
                 if (userConnDetail == null)
                     return;
-                users.Remove(userConnDetail); 
-            });
+                websocketUsersDetail.Remove(userConnDetail);
+            } 
         }
         protected override void OnError(ErrorEventArgs e)
         {
@@ -99,6 +107,8 @@ namespace ME
         private static ConcurrentDictionary<string, List<WebsocketUsersDetail>> Pair_connectionIDS = new ConcurrentDictionary<string, List<WebsocketUsersDetail>>();
 
 
+        private static ConcurrentDictionary<string, string> ConnIDToPairMap = new ConcurrentDictionary<string, string>();
+
         public static WC_TradeTicker Instance = null;
 
         public WC_TradeTicker()
@@ -109,21 +119,19 @@ namespace ME
         {
             try
             {
-                var payload = JsonConvert.SerializeObject(data);
-                Parallel.ForEach(Pair_connectionIDS.Keys.Where(key => key.ToLower() == pair.ToLower() || key.ToLower() == "all"), (key) =>
-                {
-                    Parallel.ForEach(Pair_connectionIDS[key], (userConnDetail) =>
+                var payload = JsonConvert.SerializeObject(data); 
+                List<WebsocketUsersDetail> websocketUsersDetail;
+                if (Pair_connectionIDS.TryGetValue(pair, out websocketUsersDetail))
+                    websocketUsersDetail.ForEach(userConnDetail =>
                     {
-                        Program.wssv.WebSocketServices["/MEWC_TradeTicker"].Sessions.SendToAsync(payload, userConnDetail.ConnectionId, (isSent) => {
+                        Program.wssv.WebSocketServices["/MEWC_TradeTicker"].Sessions.SendToAsync(payload, userConnDetail.ConnectionId, (isSent) =>
+                        {
                             //if (!isSent) throw new MissingMemberException();
                         });
                     });
-                });
-
             }
             catch (Exception ex)
-            {
-
+            { 
                 Console.WriteLine($"Exception => {ex.Message}");
             }
 
@@ -133,6 +141,10 @@ namespace ME
         {
             Send("Status : Connecting");
             var pair = string.IsNullOrWhiteSpace(Context.QueryString["pair"]) ? "All" : Context.QueryString["pair"];
+
+            if (!ConnIDToPairMap.TryAdd(ID, pair))
+                return;
+
             List<WebsocketUsersDetail> websocketUsersDetail;
             if (Pair_connectionIDS.TryGetValue(pair, out websocketUsersDetail))
                 websocketUsersDetail.Add(new WebsocketUsersDetail { ConnectionId = ID,   SessionStart = DateTime.UtcNow });
@@ -148,13 +160,19 @@ namespace ME
         }
         protected override void OnClose(CloseEventArgs e)
         {
-            Parallel.ForEach(Pair_connectionIDS.Values, users =>
+            string pair;
+            if (!ConnIDToPairMap.TryGetValue(ID, out pair))
+                return;
+
+            List<WebsocketUsersDetail> websocketUsersDetail;
+
+            if (Pair_connectionIDS.TryGetValue(pair, out websocketUsersDetail))
             {
-                var userConnDetail = users.Where(user => user.ConnectionId == ID).FirstOrDefault();
+                var userConnDetail = websocketUsersDetail.Where(user => user.ConnectionId == ID).FirstOrDefault();
                 if (userConnDetail == null)
-                    return; 
-                users.Remove(userConnDetail); 
-            });
+                    return;
+                websocketUsersDetail.Remove(userConnDetail);
+            }
         }
         protected override void OnError(ErrorEventArgs e)
         {

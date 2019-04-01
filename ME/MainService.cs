@@ -163,18 +163,19 @@ namespace ME
 
                 }
             //});
-            ME_Gateway.Instance.TradeQueue.Add(trade);
+            //ME_Gateway.Instance.TradeQueue.Add(trade);
             //var NotificationTask = Task.Run(() =>
             //{
             //    WC_TradeTicker.PushTicker(trade.Pair, trade);
             //});
+            WC_TradeTicker.PushTicker(trade.Pair, trade);
         }
         private void newMatchResponsesNotification(MatchResponse matchResponse)
         {
             //send push Notification using socket;
-            //WC_MatchTicker.PushTicker(matchResponse.Pair, matchResponse);
+            WC_MatchTicker.PushTicker(matchResponse.Pair, matchResponse);
 
-            ME_Gateway.Instance.MatchResponseQueue.Add(matchResponse);
+            //ME_Gateway.Instance.MatchResponseQueue.Add(matchResponse);
         }
 
 
@@ -348,25 +349,7 @@ namespace ME
         }
         public void MatchMyOrder_CornJob()
         {
-            Order order;
-            //while (true)
-            //{
-            //    if (!PendingOrderQueue.IsEmpty)
-            //    {
-
-            //        if (PendingOrderQueue.TryDequeue(out order))
-            //            try
-            //            {
-            //                MatchMyOrder(order);
-            //            }
-            //            catch (Exception ex)
-            //            {
-            //                Console.WriteLine($"Exception => {ex.Message}");
-            //            }
-            //    }
-            //    else
-            //        Task.Delay(100).Wait();
-            //}
+            Order order; 
             while (!PendingOrderQueue.IsCompleted)
             {
                 if (PendingOrderQueue.TryTake(out order, timeout: TimeSpan.FromMilliseconds(10000)))
