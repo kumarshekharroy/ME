@@ -434,8 +434,10 @@
                                 if (item.Status == 5 || item.Status == 7 || item.Status == 8) {
                                     if (existingVol > item.PendingVolume)
                                         $scope.OrderBook_Sell[item.Rate] = (existingVol - item.PendingVolume);
-                                    else
+                                    else {
                                         delete $scope.OrderBook_Sell[item.Rate];
+                                        console.log("deleted", item.Rate);
+                                    } 
                                 }
                             }
 
@@ -456,8 +458,10 @@
                                 if (item.Status == 5 || item.Status == 7 || item.Status == 8) {
                                     if (existingVol > item.PendingVolume)
                                         $scope.OrderBook_Buy[item.Rate] = (existingVol - item.PendingVolume);
-                                    else
+                                    else {
                                         delete $scope.OrderBook_Buy[item.Rate];
+                                        console.log("deleted", item.Rate);
+                                    }
                                 }
                             }
 
