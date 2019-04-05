@@ -15,38 +15,38 @@ namespace ME
         private ME_Gateway()
         {
             this.OrderID = 1000;
-            Task.Run(() =>
-            {
-                while (!MatchResponseQueue.IsCompleted)
-                {
-                    MatchResponse matchResponse;
-                    if (MatchResponseQueue.TryTake(out matchResponse, timeout: TimeSpan.FromMilliseconds(10000)))
-                        try
-                        {
-                            WC_MatchTicker.PushTicker(matchResponse.Pair, matchResponse);
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Exception => {ex.Message}");
-                        }
-                }
-            });
-            Task.Run(() =>
-            {
-                while (!TradeQueue.IsCompleted)
-                {
-                    Trade trade;
-                    if (TradeQueue.TryTake(out trade, timeout: TimeSpan.FromMilliseconds(10000)))
-                        try
-                        {
-                            WC_TradeTicker.PushTicker(trade.Pair, trade);
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Exception => {ex.Message}");
-                        }
-                }
-            });
+            //Task.Run(() =>
+            //{
+            //    while (!MatchResponseQueue.IsCompleted)
+            //    {
+            //        MatchResponse matchResponse;
+            //        if (MatchResponseQueue.TryTake(out matchResponse, timeout: TimeSpan.FromMilliseconds(10000)))
+            //            try
+            //            {
+            //                WC_MatchTicker.PushTicker(matchResponse.Pair, matchResponse);
+            //            }
+            //            catch (Exception ex)
+            //            {
+            //                Console.WriteLine($"Exception => {ex.Message}");
+            //            }
+            //    }
+            //});
+            //Task.Run(() =>
+            //{
+            //    while (!TradeQueue.IsCompleted)
+            //    {
+            //        Trade trade;
+            //        if (TradeQueue.TryTake(out trade, timeout: TimeSpan.FromMilliseconds(10000)))
+            //            try
+            //            {
+            //                WC_TradeTicker.PushTicker(trade.Pair, trade);
+            //            }
+            //            catch (Exception ex)
+            //            {
+            //                Console.WriteLine($"Exception => {ex.Message}");
+            //            }
+            //    }
+            //});
            
         }
         private readonly object listedPairs_CreationLock = new object();
