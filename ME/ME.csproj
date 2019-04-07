@@ -86,6 +86,7 @@
     <Compile Include="Model\Constants.cs" />
     <Compile Include="Model\MatchResponse.cs" />
     <Compile Include="Model\Order.cs" />
+    <Compile Include="Model\OrderPointer.cs" />
     <Compile Include="Model\Response.cs" />
     <Compile Include="Model\Statistic.cs" />
     <Compile Include="Model\Trade.cs" />

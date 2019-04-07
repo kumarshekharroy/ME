@@ -31,7 +31,7 @@ namespace ME
 
             var CurrentTime = DateTime.UtcNow;
             var DueDay = DateTime.UtcNow <= DateTime.UtcNow.Date ? DateTime.UtcNow.Date : DateTime.UtcNow.Date.AddDays(1);
-            my12AmTimer = new Timer(_ => CancelAll_DO_Orders(), null, TimeSpan.FromMilliseconds((DueDay -CurrentTime).TotalMilliseconds), TimeSpan.FromDays(1)); //every day
+            my12AmTimer = new Timer(_ => CancelAll_DO_Orders(), null, TimeSpan.FromMilliseconds((DueDay - CurrentTime).TotalMilliseconds), TimeSpan.FromDays(1)); //every day
 
             Trades.ItemAdded += new Custom_ConcurrentQueue<Trade>.ItemAddedDelegate(newTradeNotification);
             MatchResponses.ItemAdded += new Custom_ConcurrentQueue<MatchResponse>.ItemAddedDelegate(newMatchResponsesNotification);
@@ -43,7 +43,7 @@ namespace ME
         //public static MainService Instance { get { return lazy.Value; } }
 
         private readonly BlockingCollection<Order> PendingOrderQueue = new BlockingCollection<Order>();
-
+        private readonly Dictionary<long, OrderPointer> orderIndexer = new Dictionary<long, OrderPointer>();
         private readonly SortedDictionary<decimal, LinkedList<Order>> BuyOrdersDict = new SortedDictionary<decimal, LinkedList<Order>>();
         private readonly SortedDictionary<decimal, LinkedList<Order>> SellOrdersDict = new SortedDictionary<decimal, LinkedList<Order>>();
 
@@ -236,12 +236,12 @@ namespace ME
                     return this.SellOrdersDict.Select(x => new Book { Rate = x.Key, Volume = x.Value.Sum(y => y.PendingVolume) }).Take(100).Reverse().ToDictionary(x => x.Rate, x => x.Volume); ;
             }
         }
-        public Dictionary<decimal,decimal> OrderBookBuy
+        public Dictionary<decimal, decimal> OrderBookBuy
         {
             get
             {
                 lock (buyLock)
-                    return this.BuyOrdersDict.Reverse().Select(x=> new Book  { Rate=x.Key,Volume=x.Value.Sum(y=>y.PendingVolume)}).Take(100).ToDictionary(x=>x.Rate,x=>x.Volume);
+                    return this.BuyOrdersDict.Reverse().Select(x => new Book { Rate = x.Key, Volume = x.Value.Sum(y => y.PendingVolume) }).Take(100).ToDictionary(x => x.Rate, x => x.Volume);
             }
         }
 
@@ -322,21 +322,24 @@ namespace ME
             {
                 PendingOrderQueue.Add(order);
             }
-
+            orderIndexer.Add(order.ID, new OrderPointer { Rate = order.Rate, Side = order.Side });
             this.statistic.inc_submission();
             return order;
         }
         public Order CancelMyOrder(Order order)
         {
+            OrderPointer pointer;
             if (order == null)
                 return default(Order);
-            else if (order.ID == 0 || order.Side == 0)
+            else if (order.ID == 0 || !orderIndexer.TryGetValue(order.ID, out pointer) || !orderIndexer.Remove(order.ID))//Find order from and instantly remove it
             {
                 order.Status = OrderStatus.CancellationRejected;
                 return order;
             }
 
             order.Status = OrderStatus.CancellationPending;
+            order.Side = pointer.Side;
+            order.Rate = pointer.Rate;
             PendingOrderQueue.Add(order);
             this.statistic.inc_cancellation();
             return order;
@@ -349,7 +352,7 @@ namespace ME
         }
         public void MatchMyOrder_CornJob()
         {
-            Order order; 
+            Order order;
             while (!PendingOrderQueue.IsCompleted)
             {
                 if (PendingOrderQueue.TryTake(out order, timeout: TimeSpan.FromMilliseconds(10000)))
@@ -385,16 +388,12 @@ namespace ME
                 //Cancellation Request 
                 if (order.Status == OrderStatus.CancellationPending && order.ID != 0)
                 {
-                    bool isfound = false;
-                    Parallel.ForEach(BuyOrdersDict.Values, (gropued_list, loopState) =>
+                    LinkedList<Order> gropued_list; 
+                    if(BuyOrdersDict.TryGetValue(order.Rate, out gropued_list))
                     {
                         var orderToBeCancelled = gropued_list.FirstOrDefault(x => x.ID == order.ID);
                         if (orderToBeCancelled != null)
-                        {
-                            isfound = true;
-                            loopState.Break();
-
-
+                        { 
                             lock (buyLock)
                             {
                                 if (gropued_list.Count <= 1)
@@ -403,29 +402,26 @@ namespace ME
                                     gropued_list.Remove(orderToBeCancelled);
                             }
                             orderToBeCancelled.Status = OrderStatus.CancellationAccepted;
-                            response.UpdatedBuyOrders.Add(orderToBeCancelled);
-                            loopState.Stop();
+                            response.UpdatedBuyOrders.Add(orderToBeCancelled); 
                         }
-                    });
-                    if (!isfound)
-                        Parallel.ForEach(Stop_BuyOrdersDict.Values, (gropued_list, loopState) =>
-                        {
-                            var orderToBeCancelled = gropued_list.FirstOrDefault(x => x.ID == order.ID);
-                            if (orderToBeCancelled != null)
+                    }
+                    else if (Stop_BuyOrdersDict.TryGetValue(order.Rate, out gropued_list))
+                    {
+                        var orderToBeCancelled = gropued_list.FirstOrDefault(x => x.ID == order.ID);
+                        if (orderToBeCancelled != null)
+                        { 
+                            lock (buyLock)
                             {
-                                loopState.Break();
-                                lock (buyLock_stop)
-                                {
-                                    if (gropued_list.Count <= 1)
-                                        Stop_BuyOrdersDict.Remove(orderToBeCancelled.Stop);
-                                    else
-                                        gropued_list.Remove(orderToBeCancelled);
-                                }
-                                orderToBeCancelled.Status = OrderStatus.CancellationAccepted;
-                                response.UpdatedBuyOrders.Add(orderToBeCancelled);
-                                loopState.Stop();
+                                if (gropued_list.Count <= 1)
+                                    Stop_BuyOrdersDict.Remove(orderToBeCancelled.Rate);
+                                else
+                                    gropued_list.Remove(orderToBeCancelled);
                             }
-                        });
+                            orderToBeCancelled.Status = OrderStatus.CancellationAccepted;
+                            response.UpdatedBuyOrders.Add(orderToBeCancelled);
+                        }
+                    }
+                     
                 }
                 else
                 {
@@ -451,18 +447,28 @@ namespace ME
                             if ((sellOrder.PendingVolume * sellOrder.Rate).TruncateDecimal(deciaml_precision) < dust_size)
                             {
                                 sellOrder.Status = OrderStatus.Rejected;
+                                orderIndexer.Remove(sellOrder.ID);
                                 response.UpdatedSellOrders.Add(sellOrder);
                                 this.statistic.DustOrders++;
                             }
                             else
                             {
-                                if (sellOrder.PendingVolume >= order.PendingVolume)//CompleteMatch_New  PartiallyMatch Existing
+                                if (sellOrder.PendingVolume >= order.PendingVolume)//CompleteMatch_New/Both  PartiallyMatch None/Existing
                                 {
                                     sellOrder.PendingVolume -= order.PendingVolume;
-                                    sellOrder.Status = sellOrder.PendingVolume <= 0 ? OrderStatus.FullyFilled : OrderStatus.PartiallyFilled;
+                                    if (sellOrder.PendingVolume <= 0)
+                                    {
+                                        sellOrder.Status = OrderStatus.FullyFilled;
+                                        orderIndexer.Remove(sellOrder.ID);
+                                    }
+                                    else
+                                    {
+                                        sellOrder.Status = OrderStatus.PartiallyFilled;
+                                    }
                                     sellOrder.ModifiedOn = CurrentTime;
                                     order.PendingVolume = 0;
                                     order.Status = OrderStatus.FullyFilled;
+                                    orderIndexer.Remove(order.ID);
                                     order.ModifiedOn = CurrentTime;
 
                                     trade.ID = this.getTradeID();
@@ -478,10 +484,11 @@ namespace ME
                                 else //CompleteMatch_Existing  PartiallyMatch New
                                 {
                                     order.PendingVolume -= sellOrder.PendingVolume;
-                                    order.Status = order.PendingVolume <= 0 ? OrderStatus.FullyFilled : OrderStatus.PartiallyFilled;
+                                    order.Status = OrderStatus.PartiallyFilled;
                                     order.ModifiedOn = CurrentTime;
                                     sellOrder.PendingVolume = 0;
                                     sellOrder.Status = OrderStatus.FullyFilled;
+                                    orderIndexer.Remove(sellOrder.ID);
                                     sellOrder.ModifiedOn = CurrentTime;
 
 
@@ -532,11 +539,13 @@ namespace ME
                         if (order.Type == OrderType.Market)
                         {
                             order.Status = OrderStatus.Rejected;//Rejected or Cencelled
+                            orderIndexer.Remove(order.ID);
                             response.UpdatedBuyOrders.Add(order);
                         }
-                        else if(order.TimeInForce==OrderTimeInForce.IOC || order.TimeInForce == OrderTimeInForce.FOK)
+                        else if (order.TimeInForce == OrderTimeInForce.IOC || order.TimeInForce == OrderTimeInForce.FOK)
                         {
                             order.Status = OrderStatus.CancellationAccepted;
+                            orderIndexer.Remove(order.ID);
                             response.UpdatedBuyOrders.Add(order);
                         }
                         else
@@ -558,50 +567,41 @@ namespace ME
             {
                 if (order.Status == OrderStatus.CancellationPending && order.ID != 0)
                 {
-                    bool isfound = false;
 
-                    Parallel.ForEach(SellOrdersDict.Values, (gropued_list, loopState) =>
+
+                    LinkedList<Order> gropued_list;
+                    if (SellOrdersDict.TryGetValue(order.Rate, out gropued_list))
                     {
                         var orderToBeCancelled = gropued_list.FirstOrDefault(x => x.ID == order.ID);
                         if (orderToBeCancelled != null)
                         {
-                            isfound = true;
-                            loopState.Break();
-
-                            lock (sellLock)
+                            lock (buyLock)
                             {
                                 if (gropued_list.Count <= 1)
                                     SellOrdersDict.Remove(orderToBeCancelled.Rate);
                                 else
                                     gropued_list.Remove(orderToBeCancelled);
                             }
-
                             orderToBeCancelled.Status = OrderStatus.CancellationAccepted;
                             response.UpdatedSellOrders.Add(orderToBeCancelled);
-                            loopState.Stop();
                         }
-                    });
-                    if (!isfound)
-                        Parallel.ForEach(Stop_SellOrdersDict.Values, (gropued_list, loopState) =>
-                          {
-                              var orderToBeCancelled = gropued_list.FirstOrDefault(x => x.ID == order.ID);
-                              if (orderToBeCancelled != null)
-                              {
-                                  isfound = true;
-                                  loopState.Break();
-
-                                  lock (sellLock_stop)
-                                  {
-                                      if (gropued_list.Count <= 1)
-                                          Stop_SellOrdersDict.Remove(orderToBeCancelled.Stop);
-                                      else
-                                          gropued_list.Remove(orderToBeCancelled);
-                                  }
-                                  orderToBeCancelled.Status = OrderStatus.CancellationAccepted;
-                                  response.UpdatedSellOrders.Add(orderToBeCancelled);
-                                  loopState.Stop();
-                              }
-                          });
+                    }
+                    else if (Stop_SellOrdersDict.TryGetValue(order.Rate, out gropued_list))
+                    {
+                        var orderToBeCancelled = gropued_list.FirstOrDefault(x => x.ID == order.ID);
+                        if (orderToBeCancelled != null)
+                        {
+                            lock (buyLock)
+                            {
+                                if (gropued_list.Count <= 1)
+                                    Stop_SellOrdersDict.Remove(orderToBeCancelled.Rate);
+                                else
+                                    gropued_list.Remove(orderToBeCancelled);
+                            }
+                            orderToBeCancelled.Status = OrderStatus.CancellationAccepted;
+                            response.UpdatedSellOrders.Add(orderToBeCancelled);
+                        }
+                    }
 
                 }
                 else
@@ -628,6 +628,7 @@ namespace ME
                             if ((buyOrder.PendingVolume * buyOrder.Rate).TruncateDecimal(deciaml_precision) < dust_size)
                             {
                                 buyOrder.Status = OrderStatus.Rejected;
+                                orderIndexer.Remove(buyOrder.ID);
                                 response.UpdatedSellOrders.Add(buyOrder);
                                 this.statistic.DustOrders++;
                             }
@@ -635,11 +636,22 @@ namespace ME
                             {
                                 if (buyOrder.PendingVolume >= order.PendingVolume)//CompleteMatch_New  PartiallyMatch Existing
                                 {
+
                                     buyOrder.PendingVolume -= order.PendingVolume;
-                                    buyOrder.Status = buyOrder.PendingVolume <= 0 ? OrderStatus.FullyFilled : OrderStatus.PartiallyFilled;
+                                    if (buyOrder.PendingVolume <= 0)
+                                    {
+                                        buyOrder.Status = OrderStatus.FullyFilled;
+                                        orderIndexer.Remove(buyOrder.ID);
+                                    }
+                                    else
+                                    {
+                                        buyOrder.Status = OrderStatus.PartiallyFilled;
+                                    }
+
                                     buyOrder.ModifiedOn = CurrentTime;
                                     order.PendingVolume = 0;
                                     order.Status = OrderStatus.FullyFilled;
+                                    orderIndexer.Remove(order.ID);
                                     order.ModifiedOn = CurrentTime;
 
                                     trade.ID = this.getTradeID();
@@ -655,10 +667,11 @@ namespace ME
                                 else //CompleteMatch_Existing  PartiallyMatch New
                                 {
                                     order.PendingVolume -= buyOrder.PendingVolume;
-                                    order.Status = order.PendingVolume <= 0 ? OrderStatus.FullyFilled : OrderStatus.PartiallyFilled;
+                                    order.Status = OrderStatus.PartiallyFilled;
                                     order.ModifiedOn = CurrentTime;
                                     buyOrder.PendingVolume = 0;
                                     buyOrder.Status = OrderStatus.FullyFilled;
+                                    orderIndexer.Remove(buyOrder.ID);
                                     buyOrder.ModifiedOn = CurrentTime;
 
 
@@ -708,12 +721,14 @@ namespace ME
                     {
                         if (order.Type == OrderType.Market)
                         {
-                            order.Status = OrderStatus.Rejected;//Rejected or Cencelled
+                            order.Status = OrderStatus.Rejected;//Rejected or Cencelled  
+                            orderIndexer.Remove(order.ID);
                             response.UpdatedSellOrders.Add(order);
                         }
                         else if (order.TimeInForce == OrderTimeInForce.IOC || order.TimeInForce == OrderTimeInForce.FOK)
                         {
                             order.Status = OrderStatus.CancellationAccepted;
+                            orderIndexer.Remove(order.ID);
                             response.UpdatedSellOrders.Add(order);
                         }
                         else

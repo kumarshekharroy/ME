@@ -53,8 +53,8 @@ namespace ME
         private static readonly Lazy<ME_Gateway> lazy = new Lazy<ME_Gateway>(() => new ME_Gateway());
         public static ME_Gateway Instance { get { return lazy.Value; } }
 
-        public BlockingCollection<MatchResponse> MatchResponseQueue = new BlockingCollection<MatchResponse>();
-        public BlockingCollection<Trade> TradeQueue = new BlockingCollection<Trade>();
+        //public BlockingCollection<MatchResponse> MatchResponseQueue = new BlockingCollection<MatchResponse>();
+        //public BlockingCollection<Trade> TradeQueue = new BlockingCollection<Trade>();
 
         private readonly ConcurrentDictionary<string, MainService> _listedPairs = new ConcurrentDictionary<string, MainService>();
         public long OrderID, TradeID;
@@ -99,5 +99,7 @@ namespace ME
                 if (remove) { _listedPairs.TryRemove(pair, out MainService mainService); } else { _listedPairs[pair] = new MainService { }; }
 
         }
+
+        
     }
 }

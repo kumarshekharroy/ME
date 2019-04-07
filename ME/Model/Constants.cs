@@ -6,12 +6,14 @@ namespace ME.Model
 { 
     public enum OrderSide
     {
+        None=0,
         Buy = 1,
         Sell = 2
     }
 
     public enum OrderType
     {
+        None = 0,
         Limit = 1,
         StopLimit = 2,
         Market = 3,
@@ -21,14 +23,14 @@ namespace ME.Model
 
     public enum OrderStatus
     {
-        None = 1,
-        Accepted = 2,
-        PartiallyFilled = 3,
-        FullyFilled = 4,
-        Rejected = 5,
-        CancellationPending = 6,
-        CancellationAccepted = 7,
-        CancellationRejected = 8,
+        None = 0, 
+        Accepted = 1,
+        PartiallyFilled = 2,
+        FullyFilled = 3,
+        Rejected = 4,
+        CancellationPending = 5,
+        CancellationAccepted = 6,
+        CancellationRejected = 7,
     }
 
     public enum OrderTimeInForce
